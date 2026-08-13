@@ -1,0 +1,38 @@
+# Authorship note. All code and documentation in this repository were produced
+# by Anthropic Claude Opus 5 on 13 August 2026, under the direction and review
+# of the author listed below. See docs/PROVENANCE.md for the full record.
+cff-version: 1.2.0
+title: Schwarzschild Ray Tracer
+message: >-
+  If you use this software or its images, please cite it using the
+  metadata in this file.
+type: software
+authors:
+  - given-names: Francesco
+    family-names: Del Re
+    alias: engineering87
+repository-code: 'https://github.com/engineering87/schwarzschild-raytracer'
+url: 'https://engineering87.github.io/schwarzschild-raytracer/'
+abstract: >-
+  A real-time browser renderer of a Schwarzschild black hole with a thin
+  Keplerian accretion disk. Null geodesics are integrated per pixel with
+  fourth order Runge-Kutta on the exact orbit equation of the Schwarzschild
+  metric. Gravitational lensing, the photon ring, the shadow at the critical
+  impact parameter 3*sqrt(3) M, relativistic beaming, and gravitational
+  redshift are consequences of the integration rather than applied effects.
+  The integrator is verified against the analytic photon capture cross-section
+  and against the post-Newtonian light deflection series. The implementation
+  was authored by Anthropic Claude Opus 5; see docs/PROVENANCE.md.
+keywords:
+  - general relativity
+  - black hole
+  - Schwarzschild metric
+  - gravitational lensing
+  - null geodesics
+  - ray tracing
+  - WebGL
+  - scientific visualization
+  - large language models
+license: MIT
+version: 1.0.0
+date-released: '2026-08-13'

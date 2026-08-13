@@ -1,0 +1,1086 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Schwarzschild Ray Tracer — null geodesic integrator</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans+Condensed:wght@600&family=IBM+Plex+Sans:wght@400;500&family=IBM+Plex+Serif:ital,wght@0,400;0,500;1,400;1,500&display=swap" rel="stylesheet">
+<style>
+:root{
+  --void:#07080C;
+  --panel:#0C0E14;
+  --panel-2:#11141C;
+  --line:#1D2130;
+  --line-soft:#161A25;
+  --ink:#DCDFE6;
+  --dim:#767E90;
+  --dimmer:#4B5162;
+  --amber:#E8A33D;
+  --amber-dim:#7A5A24;
+  --warn:#D4633F;
+  --sans:"IBM Plex Sans", ui-sans-serif, -apple-system, "Segoe UI", Roboto, sans-serif;
+  --cond:"IBM Plex Sans Condensed", "IBM Plex Sans", ui-sans-serif, -apple-system, sans-serif;
+  --mono:"IBM Plex Mono", ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{height:100%}
+body{
+  background:var(--void); color:var(--ink); font-family:var(--sans);
+  overflow:hidden; -webkit-font-smoothing:antialiased;
+}
+#stage{position:fixed; inset:0}
+canvas{display:block; width:100%; height:100%; cursor:grab; touch-action:none}
+canvas.dragging{cursor:grabbing}
+
+/* ---------- top bar ---------- */
+#topbar{
+  position:fixed; top:0; left:0; right:0; height:46px;
+  display:flex; align-items:center; gap:18px; padding:0 16px;
+  background:linear-gradient(to bottom, rgba(7,8,12,.92), rgba(7,8,12,0));
+  pointer-events:none; z-index:5;
+}
+#brand{font-family:var(--cond); font-weight:600; font-size:15px; letter-spacing:.02em}
+#brand span{color:var(--amber)}
+#status{
+  font-family:var(--mono); font-size:10.5px; color:var(--dim);
+  letter-spacing:.06em; display:flex; gap:14px; flex-wrap:wrap;
+}
+#status b{color:var(--ink); font-weight:500}
+.conv{color:var(--amber)}
+
+/* ---------- radius scale (signature) ---------- */
+#scale{
+  position:fixed; left:16px; bottom:16px; width:min(420px, calc(100vw - 32px));
+  z-index:5; pointer-events:none;
+  background:rgba(9,10,15,.62); backdrop-filter:blur(8px);
+  border:1px solid var(--line-soft); padding:11px 13px 9px;
+}
+#scale .eyebrow{
+  font-family:var(--mono); font-size:9px; letter-spacing:.18em; color:var(--dimmer);
+  text-transform:uppercase; margin-bottom:9px;
+}
+#scaleSvg{display:block; width:100%; height:52px}
+
+/* ---------- console ---------- */
+#console{
+  position:fixed; top:0; right:0; bottom:0; width:330px; z-index:6;
+  background:var(--panel); border-left:1px solid var(--line);
+  display:flex; flex-direction:column; transition:transform .28s cubic-bezier(.4,0,.2,1);
+}
+#console.hidden{transform:translateX(100%)}
+#consoleHead{
+  flex:0 0 auto; padding:14px 16px 12px; border-bottom:1px solid var(--line);
+  display:flex; align-items:baseline; justify-content:space-between;
+}
+#consoleHead h1{font-family:var(--cond); font-size:13px; font-weight:600; letter-spacing:.08em; text-transform:uppercase}
+#consoleBody{flex:1 1 auto; overflow-y:auto; overscroll-behavior:contain}
+#consoleBody::-webkit-scrollbar{width:8px}
+#consoleBody::-webkit-scrollbar-thumb{background:var(--line); }
+
+.group{border-bottom:1px solid var(--line-soft); padding:13px 16px 15px}
+.group > h2{
+  font-family:var(--mono); font-size:9.5px; letter-spacing:.18em; text-transform:uppercase;
+  color:var(--amber); margin-bottom:11px; display:flex; align-items:center; gap:8px;
+}
+.group > h2::after{content:""; flex:1; height:1px; background:var(--line)}
+
+.ctl{margin-bottom:11px}
+.ctl:last-child{margin-bottom:0}
+.ctl-top{display:flex; justify-content:space-between; align-items:baseline; margin-bottom:5px; gap:8px}
+.ctl-label{font-size:11.5px; color:var(--ink); line-height:1.25}
+.ctl-val{font-family:var(--mono); font-size:11px; color:var(--amber); white-space:nowrap}
+.ctl-note{font-size:10px; color:var(--dimmer); margin-top:4px; line-height:1.4}
+.ctl-note.alert{color:var(--warn)}
+
+input[type=range]{
+  -webkit-appearance:none; appearance:none; width:100%; height:16px; background:transparent; cursor:pointer;
+}
+input[type=range]::-webkit-slider-runnable-track{height:2px; background:var(--line); }
+input[type=range]::-moz-range-track{height:2px; background:var(--line)}
+input[type=range]::-webkit-slider-thumb{
+  -webkit-appearance:none; width:11px; height:11px; margin-top:-4.5px;
+  background:var(--amber); border-radius:50%;
+}
+input[type=range]::-moz-range-thumb{width:11px;height:11px;background:var(--amber);border:0;border-radius:50%}
+input[type=range]:focus-visible{outline:1px solid var(--amber); outline-offset:3px}
+
+.toggle{display:flex; align-items:center; justify-content:space-between; gap:10px; padding:5px 0; cursor:pointer}
+.toggle-label{font-size:11.5px}
+.switch{
+  flex:0 0 auto; width:32px; height:16px; border:1px solid var(--line);
+  background:var(--panel-2); position:relative; transition:.16s;
+}
+.switch::after{
+  content:""; position:absolute; top:2px; left:2px; width:10px; height:10px;
+  background:var(--dimmer); transition:.16s;
+}
+.toggle input{position:absolute; opacity:0; width:0; height:0}
+.toggle input:checked + .switch{border-color:var(--amber-dim); background:rgba(232,163,61,.1)}
+.toggle input:checked + .switch::after{left:18px; background:var(--amber)}
+.toggle input:focus-visible + .switch{outline:1px solid var(--amber); outline-offset:3px}
+
+.btnrow{display:grid; grid-template-columns:1fr 1fr; gap:6px}
+button{
+  font-family:var(--sans); font-size:11px; color:var(--ink); background:var(--panel-2);
+  border:1px solid var(--line); padding:7px 8px; cursor:pointer; transition:.14s; letter-spacing:.01em;
+}
+button:hover{border-color:var(--amber-dim); color:var(--amber)}
+button:focus-visible{outline:1px solid var(--amber); outline-offset:2px}
+button.wide{grid-column:1 / -1}
+
+#toggleConsole{
+  position:fixed; top:9px; right:12px; z-index:7; width:28px; height:28px; padding:0;
+  display:flex; align-items:center; justify-content:center; font-family:var(--mono); font-size:13px;
+  background:rgba(12,14,20,.8);
+}
+
+/* readouts table */
+.readout{width:100%; font-family:var(--mono); font-size:10.5px; border-collapse:collapse}
+.readout td{padding:3.5px 0; vertical-align:baseline}
+.readout td:first-child{color:var(--dim)}
+.readout td:last-child{text-align:right; color:var(--ink)}
+.readout tr.hl td:last-child{color:var(--amber)}
+
+/* notes / references */
+details{border-top:1px solid var(--line-soft)}
+details summary{
+  padding:11px 16px; cursor:pointer; font-family:var(--mono); font-size:9.5px;
+  letter-spacing:.16em; text-transform:uppercase; color:var(--dim); list-style:none;
+}
+details summary::-webkit-details-marker{display:none}
+details summary::before{content:"+ "; color:var(--amber)}
+details[open] summary::before{content:"− "}
+details .content{padding:0 16px 16px; font-size:11px; line-height:1.55; color:var(--dim)}
+details .content p{margin-bottom:9px}
+details .content strong{color:var(--ink); font-weight:500}
+details .content code{font-family:var(--mono); font-size:10px; color:var(--amber)}
+details .content ul{list-style:none; margin-bottom:9px}
+details .content li{padding-left:12px; position:relative; margin-bottom:5px}
+details .content li::before{content:"—"; position:absolute; left:0; color:var(--dimmer)}
+
+/* ---------- inline mathematical typesetting ---------- */
+.eq{
+  display:block; text-align:center; margin:12px 0 13px; padding:11px 10px 12px;
+  background:var(--panel-2); border-left:2px solid var(--amber-dim);
+  overflow-x:auto; overflow-y:hidden;
+}
+/* The container is inline-block, not inline-flex. Direct children of a flex
+   container become flex items, and flex items ignore vertical-align, which
+   silently drops every exponent that is not nested inside a fraction. */
+.m{
+  font-family:"IBM Plex Serif", Georgia, "Times New Roman", serif;
+  font-size:14px; line-height:1.9; color:var(--ink); white-space:nowrap;
+  display:inline-block;
+}
+.m .v{font-style:italic; padding-right:.04em}          /* variable        */
+.m .o{padding:0 .34em; color:var(--dim)}               /* binary operator */
+.m .p{padding:0 .06em}                                 /* punctuation     */
+.m .n{font-style:normal}                               /* numeral or word */
+.m .gap{display:inline-block; width:2.1em}
+.m sup{font-size:.68em; vertical-align:.62em; line-height:0}
+.m sub{font-size:.68em; vertical-align:-.28em; line-height:0; font-style:normal}
+.m .paren{
+  display:inline-block; transform:scaleY(1.55); transform-origin:center;
+  padding:0 .06em; color:var(--dim); font-weight:300;
+}
+.m .brk{display:inline-block; transform:scaleY(1.75); color:var(--dim); font-weight:300}
+.frac{
+  display:inline-flex; flex-direction:column; align-items:center;
+  vertical-align:middle; margin:0 .22em; line-height:1.15;
+  position:relative; top:-.06em;
+}
+.frac > span{padding:0 .32em}
+.frac > span:first-child{border-bottom:1px solid var(--dim); padding-bottom:.14em}
+.frac > span:last-child{padding-top:.14em}
+.sqrt{display:inline-flex; align-items:flex-start; margin:0 .06em; vertical-align:middle}
+.sqrt::before{content:"\221A"; font-size:1.08em; line-height:.94; color:var(--dim)}
+.sqrt > span{border-top:1px solid var(--dim); padding:.12em .18em 0 .06em}
+details .content .eq + p{margin-top:11px}
+
+#fatal{
+  position:fixed; inset:0; display:none; place-items:center; padding:32px; z-index:20;
+  background:var(--void); text-align:center;
+}
+#fatal div{max-width:420px; font-size:13px; line-height:1.6; color:var(--dim)}
+#fatal h2{font-family:var(--cond); font-size:16px; color:var(--ink); margin-bottom:10px; letter-spacing:.04em}
+
+@media (max-width:760px){
+  #console{top:auto; width:100%; height:62vh; border-left:0; border-top:1px solid var(--line)}
+  #console.hidden{transform:translateY(100%)}
+  #scale{display:none}
+  #status{font-size:9.5px; gap:10px}
+}
+@media (prefers-reduced-motion:reduce){ #console{transition:none} }
+</style>
+</head>
+<body>
+
+<div id="stage"><canvas id="gl"></canvas></div>
+
+<div id="topbar">
+  <div id="brand">SCHWARZSCHILD <span>/</span> null-geodesic ray tracer</div>
+  <div id="status">
+    <span>RES <b id="stRes">—</b></span>
+    <span>SAMPLES <b id="stSamples" class="conv">—</b></span>
+    <span>FPS <b id="stFps">—</b></span>
+  </div>
+</div>
+
+<div id="scale">
+  <div class="eyebrow">Radial map — units of GM/c²</div>
+  <svg id="scaleSvg" viewBox="0 0 400 52" preserveAspectRatio="none"></svg>
+</div>
+
+<button id="toggleConsole" title="Show or hide the console">≡</button>
+
+<aside id="console">
+  <div id="consoleHead">
+    <h1>Console</h1>
+    <span style="font-family:var(--mono);font-size:9.5px;color:var(--dimmer)">M = GM/c² = 1</span>
+  </div>
+  <div id="consoleBody">
+
+    <div class="group">
+      <h2>View</h2>
+      <div class="btnrow">
+        <button data-preset="edge">Edge-on</button>
+        <button data-preset="face">Face-on</button>
+        <button data-preset="ring">Photon ring</button>
+        <button data-preset="flat">Lensing off</button>
+      </div>
+    </div>
+
+    <div class="group" data-controls="camera"><h2>Camera</h2></div>
+    <div class="group" data-controls="disk"><h2>Accretion disk</h2></div>
+    <div class="group" data-controls="rel"><h2>Relativistic transfer</h2></div>
+    <div class="group" data-controls="render"><h2>Rendering</h2></div>
+
+    <div class="group">
+      <h2>Critical radii</h2>
+      <table class="readout">
+        <tr class="hl"><td>Event horizon r<sub>s</sub></td><td>2.000 M</td></tr>
+        <tr class="hl"><td>Photon sphere</td><td>3.000 M</td></tr>
+        <tr class="hl"><td>ISCO</td><td>6.000 M</td></tr>
+        <tr class="hl"><td>Shadow b<sub>crit</sub> = 3√3 M</td><td>5.196 M</td></tr>
+        <tr><td>Camera radius</td><td id="roCam">—</td></tr>
+        <tr><td>Shadow angular radius</td><td id="roShadow">—</td></tr>
+        <tr><td>Disk peak temperature at</td><td id="roTpeakR">—</td></tr>
+        <tr><td>Max blueshift on disk</td><td id="roG">—</td></tr>
+      </table>
+      <div class="btnrow" style="margin-top:12px">
+        <button id="btnReset">Reset view</button>
+        <button id="btnPng">Save PNG</button>
+      </div>
+    </div>
+
+    <details>
+      <summary>What is computed exactly</summary>
+      <div class="content">
+        <p>Each pixel casts one ray backwards in time from a <strong>static observer</strong> at Schwarzschild radial coordinate r. Because the Schwarzschild metric is spherically symmetric, every null geodesic stays in the plane spanned by the observer position and the ray direction, so the trajectory reduces to one ordinary differential equation in u = 1/r:</p>
+        <div class="eq"><span class="m">
+          <span class="frac"><span><span class="n">d</span><sup>2</sup><span class="v">u</span></span><span><span class="n">d</span><span class="v">&#966;</span><sup>2</sup></span></span>
+          <span class="o">+</span><span class="v">u</span>
+          <span class="o">=</span>
+          <span class="n">3</span><span class="paren">(</span><span class="v">GM</span><span class="p">/</span><span class="v">c</span><sup>2</sup><span class="paren">)</span><span class="v">u</span><sup>2</sup>
+        </span></div>
+        <p>integrated with fixed-step RK4. This is the exact null geodesic equation of the Schwarzschild solution, not a weak-field approximation. The weak-field limit
+        <span class="m" style="font-size:13px"><span class="v">&#945;</span><span class="o">=</span><span class="frac"><span><span class="n">4</span><span class="v">GM</span></span><span><span class="v">c</span><sup>2</sup><span class="v">b</span></span></span></span>
+        is recovered automatically for large impact parameter.</p>
+        <ul>
+          <li>A ray reaching r &lt; 2M is captured and rendered black. This produces the shadow, whose critical impact parameter is <span class="m" style="font-size:13px"><span class="v">b</span><sub>crit</sub><span class="o">=</span><span class="n">3</span><span class="sqrt"><span><span class="n">3</span></span></span><span class="v">M</span></span>.</li>
+          <li>Higher-order images (the photon ring, and the disk seen over and under the hole) appear because rays can wind past the photon sphere at r = 3M. Nothing is faked.</li>
+          <li>Initial conditions use the local orthonormal frame of the static observer, including the factor <span class="m" style="font-size:13px"><span class="sqrt"><span><span class="n">1</span><span class="o">&#8722;</span><span class="n">2</span><span class="v">M</span><span class="p">/</span><span class="v">r</span></span></span></span> on the radial momentum component, so the field of view is the one an observer at that radius would actually measure.</li>
+        </ul>
+        <p>The disk is a geometrically thin, optically thick, equatorial ring of matter on circular Keplerian orbits. The frequency shift for that flow is</p>
+        <div class="eq"><span class="m">
+          <span class="v">g</span><span class="o">=</span>
+          <span class="frac">
+            <span><span class="sqrt"><span><span class="n">1</span><span class="o">&#8722;</span><span class="n">3</span><span class="v">M</span><span class="p">/</span><span class="v">r</span></span></span></span>
+            <span><span class="n">1</span><span class="o">&#8722;</span><span class="v">&#937;</span><span class="v">&#955;</span></span>
+          </span>
+          <span class="gap"></span>
+          <span class="v">&#937;</span><span class="o">=</span><span class="sqrt"><span><span class="v">M</span><span class="p">/</span><span class="v">r</span><sup>3</sup></span></span>
+        </span></div>
+        <p>where <span class="m" style="font-size:13px"><span class="v">&#955;</span><span class="o">=</span><span class="v">L</span><sub>z</sub><span class="p">/</span><span class="v">E</span></span> is the photon's conserved axial impact parameter, obtained from the same integration. Observed intensity follows
+        <span class="m" style="font-size:13px"><span class="v">I</span><sub>obs</sub><span class="o">=</span><span class="v">g</span><sup>4</sup><span class="v">I</span><sub>em</sub></span>,
+        which is Liouville's theorem applied to the invariant <span class="m" style="font-size:13px"><span class="v">I</span><sub>&#957;</sub><span class="p">/</span><span class="v">&#957;</span><sup>3</sup></span>. Doppler beaming and gravitational redshift are the two factors of that single expression and can be switched independently.</p>
+        <p>The radial temperature profile is the standard thin-disk law with a torque-free inner boundary,</p>
+        <div class="eq"><span class="m">
+          <span class="v">T</span><span class="paren">(</span><span class="v">r</span><span class="paren">)</span>
+          <span class="o">&#8733;</span>
+          <span class="brk">[</span>
+          <span class="frac"><span><span class="n">1</span></span><span><span class="v">r</span><sup>3</sup></span></span>
+          <span class="paren">(</span><span class="n">1</span><span class="o">&#8722;</span><span class="sqrt"><span><span class="v">r</span><sub>in</sub><span class="p">/</span><span class="v">r</span></span></span><span class="paren">)</span>
+          <span class="brk">]</span><sup>1/4</sup>
+        </span></div>
+        <p>which peaks at <span class="m" style="font-size:13px"><span class="v">r</span><span class="o">=</span><span class="frac"><span>49</span><span>36</span></span><span class="v">r</span><sub>in</sub></span>. Colour comes from a blackbody at the <em>observed</em> temperature <span class="m" style="font-size:13px"><span class="v">gT</span></span>, and brightness from the Stefan-Boltzmann scaling of that same observed temperature.</p>
+      </div>
+    </details>
+
+    <details>
+      <summary>What is approximated or invented</summary>
+      <div class="content">
+        <p>Read this before using any frame as evidence of anything.</p>
+        <ul>
+          <li><strong>Non-rotating hole only.</strong> This is Schwarzschild, spin a = 0. There is no frame dragging, no ergosphere, no Kerr ISCO shift. A real astrophysical hole almost certainly spins.</li>
+          <li><strong>Colour temperature is a display choice.</strong> A real disk around a stellar-mass hole peaks in soft X-rays (10⁷ K) and around a supermassive hole in the ultraviolet. Nothing there is visible. The temperature slider maps the physical <em>profile shape</em> onto the visible band so that the shape and the relative shifts can be seen.</li>
+          <li><strong>No radiative transfer.</strong> The disk emits as an opaque blackbody surface. There is no Comptonisation, no corona, no synchrotron, no absorption along the path, no plasma, no jet.</li>
+          <li><strong>Turbulence texture is decorative.</strong> The banding is procedural noise sheared by the real Keplerian differential rotation. The shear is physical; the pattern is not a magnetohydrodynamic solution.</li>
+          <li><strong>The star field is procedural,</strong> not a real catalogue. Its lensing and the Einstein rings are real consequences of the integration, but the stars themselves are invented.</li>
+          <li><strong>Numerical truncation.</strong> Rays are declared escaped at a finite radius, so the residual deflection beyond it is dropped. The error is of order M/r_escape, roughly one degree at the default setting. Raising the escape radius and step count reduces it.</li>
+          <li><strong>The lensing slider below 1.0 is not physics.</strong> It scales the 3Mu² term for comparison only. Only 1.0 is the Schwarzschild solution; 0.0 is straight-line optics.</li>
+        </ul>
+      </div>
+    </details>
+
+    <details>
+      <summary>Provenance</summary>
+      <div class="content">
+        <p>Every line of this simulation, the offline reference renderer, the verification scripts, and the documentation were produced by <strong>Anthropic Claude Opus 5</strong> in a single session on 13 August 2026, from a one sentence brief that specified no metric, no integration scheme, and no verification strategy.</p>
+        <p>The repository states this plainly because it is the reference point of a comparison study across models. The full record, including what was verified, what was not, and the mistakes corrected along the way, is in <code>docs/PROVENANCE.md</code>.</p>
+      </div>
+    </details>
+
+    <details>
+      <summary>References</summary>
+      <div class="content">
+        <ul>
+          <li>K. Schwarzschild, Sitzungsberichte der Preussischen Akademie der Wissenschaften, 1916 — the vacuum solution.</li>
+          <li>C. Misner, K. Thorne, J. Wheeler, <em>Gravitation</em>, 1973 — orbit equation, photon sphere, local orthonormal frames.</li>
+          <li>J. Bardeen, in <em>Black Holes</em> (Les Houches 1972), 1973 — photon capture cross-section and the 3√3 M shadow.</li>
+          <li>N. Shakura, R. Sunyaev, Astronomy &amp; Astrophysics 24, 337, 1973 — thin accretion disk temperature profile.</li>
+          <li>J.-P. Luminet, Astronomy &amp; Astrophysics 75, 228, 1979 — first computed image of a thin disk around a Schwarzschild hole, including the secondary image.</li>
+          <li>Event Horizon Telescope Collaboration, ApJL 875, 2019 — measured shadow, for comparison with the geometry here.</li>
+          <li>ACES filmic tone curve, approximation published by K. Narkowicz, 2015.</li>
+          <li>Planckian locus fitted with the cubic approximation commonly attributed to Kim et al. (2002). I have not verified that bibliographic reference directly; treat the citation as unconfirmed. The fit itself is checked against blackbody chromaticities over 1700–25000 K.</li>
+        </ul>
+      </div>
+    </details>
+
+  </div>
+</aside>
+
+<div id="fatal"><div>
+  <h2>WebGL 2 is not available</h2>
+  <p>This simulation integrates a differential equation per pixel on the GPU and needs a WebGL 2 context. Enable hardware acceleration in your browser settings, or open the page on a machine with a GPU driver that supports WebGL 2.</p>
+</div></div>
+
+<script>
+"use strict";
+
+/* ============================================================
+   Schwarzschild null-geodesic ray tracer
+   Geometric units: G = c = M = 1. Horizon at r = 2, photon
+   sphere at r = 3, ISCO at r = 6, shadow at b = 3*sqrt(3).
+   ============================================================ */
+
+const canvas = document.getElementById('gl');
+const gl = canvas.getContext('webgl2', {
+  antialias:false, alpha:false, depth:false, stencil:false,
+  preserveDrawingBuffer:true, powerPreference:'high-performance'
+});
+if(!gl){ document.getElementById('fatal').style.display='grid'; throw new Error('no webgl2'); }
+
+const floatExt = gl.getExtension('EXT_color_buffer_float');
+const halfExt  = gl.getExtension('EXT_color_buffer_half_float');
+gl.getExtension('OES_texture_float_linear');
+const HDR = !!(floatExt || halfExt);
+const INTERNAL = floatExt ? gl.RGBA16F : (halfExt ? gl.RGBA16F : gl.RGBA8);
+const TEXTYPE  = HDR ? gl.HALF_FLOAT : gl.UNSIGNED_BYTE;
+
+/* ---------------- parameters ---------------- */
+const P = {
+  incl:80, azim:0, dist:60, fov:30,
+  diskIn:6, diskOut:20, tpeak:4800, turb:0.50, diskBright:1.0,
+  showDisk:1, grav:1, dopp:1, gr:1.0,
+  steps:900, dphi:0.018, escape:140,
+  exposure:0.90, glow:0.55, glowRadius:24, glowThresh:0.55,
+  stars:1, starBright:1.0, scale:1.0, animate:1, speed:1.0
+};
+const DEFAULTS = Object.assign({}, P);
+
+/* ---------------- shaders ---------------- */
+const VS = `#version 300 es
+out vec2 vUV;
+void main(){
+  vec2 p = vec2((gl_VertexID << 1) & 2, gl_VertexID & 2);
+  vUV = p;
+  gl_Position = vec4(p * 2.0 - 1.0, 0.0, 1.0);
+}`;
+
+const TRACE_FS = `#version 300 es
+precision highp float;
+out vec4 outColor;
+
+uniform vec2  uRes;
+uniform vec3  uCamPos;
+uniform vec3  uRight, uUp, uFwd;
+uniform float uTanHalfFov;
+uniform vec2  uJitter;
+uniform float uBlend;
+uniform sampler2D uPrev;
+
+uniform float uDiskIn, uDiskOut, uTpeak, uTurb, uDiskBright;
+uniform float uGR, uEscape, uDphi, uTime, uStarBright;
+uniform int   uSteps, uShowDisk, uGrav, uDopp, uStars;
+
+const int   MAXSTEPS = 2400;
+const float PI = 3.14159265359;
+
+/* ---- hashes / noise ---- */
+float hash12(vec2 p){
+  vec3 p3 = fract(vec3(p.xyx) * 0.1031);
+  p3 += dot(p3, p3.yzx + 33.33);
+  return fract((p3.x + p3.y) * p3.z);
+}
+vec3 hash33(vec3 p3){
+  p3 = fract(p3 * vec3(0.1031, 0.1030, 0.0973));
+  p3 += dot(p3, p3.yxz + 33.33);
+  return fract((p3.xxy + p3.yxx) * p3.zyx);
+}
+/* value noise periodic in x with period KX */
+float vnoise(vec2 p, float KX){
+  vec2 i = floor(p), f = fract(p);
+  f = f * f * (3.0 - 2.0 * f);
+  vec2 i0 = vec2(mod(i.x, KX), i.y);
+  vec2 i1 = vec2(mod(i.x + 1.0, KX), i.y);
+  float a = hash12(i0);
+  float b = hash12(i1);
+  float c = hash12(i0 + vec2(0.0, 1.0));
+  float d = hash12(i1 + vec2(0.0, 1.0));
+  return mix(mix(a, b, f.x), mix(c, d, f.x), f.y);
+}
+float fbm(vec2 p, float KX){
+  float s = 0.0, a = 0.5, k = KX;
+  for(int i = 0; i < 4; i++){
+    s += a * vnoise(p, k);
+    p *= 2.0; k *= 2.0; a *= 0.5;
+  }
+  return s;
+}
+
+/* ---- blackbody chromaticity, luminance normalised to 1 ---- */
+vec3 blackbodyRGB(float T){
+  T = clamp(T, 1700.0, 25000.0);
+  float t2 = T * T, t3 = t2 * T;
+  float x;
+  if(T < 4000.0) x = -0.2661239e9 / t3 - 0.2343589e6 / t2 + 0.8776956e3 / T + 0.179910;
+  else           x = -3.0258469e9 / t3 + 2.1070379e6 / t2 + 0.2226347e3 / T + 0.240390;
+  float x2 = x * x, x3 = x2 * x;
+  float y;
+  if(T < 2222.0)      y = -1.1063814 * x3 - 1.34811020 * x2 + 2.18555832 * x - 0.20219683;
+  else if(T < 4000.0) y = -0.9549476 * x3 - 1.37418593 * x2 + 2.09137015 * x - 0.16748867;
+  else                y =  3.0817580 * x3 - 5.87338670 * x2 + 3.75112997 * x - 0.37001483;
+  y = max(y, 1e-4);
+  vec3 XYZ = vec3(x / y, 1.0, (1.0 - x - y) / y);
+  mat3 M = mat3( 3.2404542, -0.9692660,  0.0556434,
+                -1.5371385,  1.8760108, -0.2040259,
+                -0.4985314,  0.0415560,  1.0572252);
+  return max(M * XYZ, vec3(0.0));
+}
+
+/* ---- procedural sky ---- */
+vec3 skyColor(vec3 dir){
+  if(uStars == 0) return vec3(0.0);
+  vec3 a = abs(dir);
+  vec2 uv; float face;
+  if(a.x >= a.y && a.x >= a.z){ uv = dir.yz / a.x; face = dir.x > 0.0 ? 0.0 : 1.0; }
+  else if(a.y >= a.z)         { uv = dir.xz / a.y; face = dir.y > 0.0 ? 2.0 : 3.0; }
+  else                        { uv = dir.xy / a.z; face = dir.z > 0.0 ? 4.0 : 5.0; }
+
+  const float N = 62.0;
+  vec2 g = uv * N;
+  vec2 gi = floor(g), gf = g - gi;
+  vec3 col = vec3(0.0);
+  for(int j = -1; j <= 1; j++){
+    for(int i = -1; i <= 1; i++){
+      vec2 nb = vec2(float(i), float(j));
+      vec3 h = hash33(vec3(gi + nb, face));
+      if(h.z > 0.42) continue;
+      vec2 d = gf - nb - vec2(h.x, h.y);
+      float d2 = dot(d, d);
+      float mag = pow(fract(h.z * 71.17), 5.0) + 0.012;
+      float T = mix(2900.0, 13000.0, pow(fract(h.x * 37.91), 1.6));
+      col += blackbodyRGB(T) * mag * exp(-d2 * 210.0);
+    }
+  }
+  /* faint galactic band, tilted away from the disk plane */
+  vec3 bandN = normalize(vec3(0.34, -0.52, 0.78));
+  float s = dot(dir, bandN);
+  float band = exp(-s * s * 13.0);
+  float clumps = fbm(vec2(atan(dir.y, dir.x) * 2.2, dir.z * 3.4), 16.0);
+  col += vec3(0.030, 0.034, 0.052) * band * (0.35 + 0.9 * clumps);
+  return col * uStarBright;
+}
+
+/* ---- thin-disk emission at radius r, azimuth psi, shift lambda ---- */
+vec3 diskEmission(float r, float psi, float lambda){
+  float xin = sqrt(uDiskIn / r);
+  float prof = (uDiskIn * uDiskIn * uDiskIn) / (r * r * r) * (1.0 - xin);
+  prof = max(prof, 1e-8);
+  /* 0.487872 is the maximum of prof^(1/4), reached at r = (49/36) r_in */
+  float Tem = uTpeak * pow(prof, 0.25) / 0.487872;
+
+  float Om = 1.0 / (r * sqrt(r));                 /* sqrt(M/r^3) */
+  float gGrav = sqrt(max(1.0 - 2.0 / r, 1e-5));
+  float gFull = sqrt(max(1.0 - 3.0 / r, 1e-5)) / max(1.0 - Om * lambda, 0.02);
+  float g = 1.0;
+  if(uGrav == 1) g *= gGrav;
+  if(uDopp == 1) g *= gFull / gGrav;
+
+  float Tobs = clamp(Tem * g, 800.0, 40000.0);
+  vec3 rgb = blackbodyRGB(Tobs);
+  float I = pow(Tobs / uTpeak, 4.0);              /* Stefan-Boltzmann on observed T */
+
+  if(uTurb > 0.001){
+    float shear = psi - Om * uTime;
+    float n = fbm(vec2(shear * (14.0 / (2.0 * PI)), log(r) * 5.2), 14.0);
+    I *= mix(1.0, 0.35 + 1.55 * n, uTurb);
+  }
+  /* soften the two edges so the annulus does not alias into a hard ring */
+  I *= smoothstep(0.0, 0.12, (r - uDiskIn) / uDiskIn);
+  I *= 1.0 - smoothstep(0.86, 1.0, r / uDiskOut);
+  return rgb * I * uDiskBright;
+}
+
+void main(){
+  vec2 frag = gl_FragCoord.xy + uJitter;
+  vec2 ndc  = (frag / uRes) * 2.0 - 1.0;
+  float aspect = uRes.x / uRes.y;
+
+  vec3 d = normalize(uFwd + uTanHalfFov * (ndc.x * aspect * uRight + ndc.y * uUp));
+  vec3 o = uCamPos;
+
+  float r0 = length(o);
+  vec3 e1 = o / r0;
+  vec3 nv = cross(o, d);
+  float nl = length(nv);
+  vec3 nh = (nl > 1e-9) ? nv / nl : normalize(cross(e1, vec3(0.0173, 0.9986, 0.0491)));
+  vec3 e2 = normalize(cross(nh, e1));
+
+  float dRad = dot(d, e1);
+  float dTan = max(dot(d, e2), 1e-6);
+  float f0   = 1.0 - 2.0 / r0;
+  float sf0  = sqrt(max(f0, 1e-6));
+
+  float u   = 1.0 / r0;
+  float w   = -sf0 * dRad / (r0 * dTan);          /* du/dphi */
+  float b   = r0 * dTan / sf0;                    /* L / E   */
+  float lam = -b * nh.z;                          /* L_z / E for the physical photon */
+
+  float phi = 0.0;
+  float h   = uDphi;
+  float uEsc = 1.0 / uEscape;
+
+  vec3  col   = vec3(0.0);
+  float trans = 1.0;
+  bool  done  = false;
+  bool  hitHorizon = false;
+
+  float sPrev = e1.z;                             /* sign tracker for the z = 0 plane */
+
+  for(int i = 0; i < MAXSTEPS; i++){
+    if(i >= uSteps) break;
+
+    float uPrev = u, wPrev = w, phiPrev = phi;
+
+    /* RK4 on u'' = 3*uGR*u^2 - u */
+    float k1u = w,                       k1w = 3.0 * uGR * u * u - u;
+    float u2  = u + 0.5 * h * k1u,       w2  = w + 0.5 * h * k1w;
+    float k2u = w2,                      k2w = 3.0 * uGR * u2 * u2 - u2;
+    float u3  = u + 0.5 * h * k2u,       w3  = w + 0.5 * h * k2w;
+    float k3u = w3,                      k3w = 3.0 * uGR * u3 * u3 - u3;
+    float u4  = u + h * k3u,             w4  = w + h * k3w;
+    float k4u = w4,                      k4w = 3.0 * uGR * u4 * u4 - u4;
+
+    u += (h / 6.0) * (k1u + 2.0 * k2u + 2.0 * k3u + k4u);
+    w += (h / 6.0) * (k1w + 2.0 * k2w + 2.0 * k3w + k4w);
+    phi += h;
+
+    /* escaped to infinity within one step */
+    if(u <= 1e-7){
+      vec3 rh = cos(phiPrev) * e1 + sin(phiPrev) * e2;
+      vec3 ph = -sin(phiPrev) * e1 + cos(phiPrev) * e2;
+      vec3 vd = normalize(-wPrev * rh + uPrev * ph);
+      col += trans * skyColor(vd);
+      done = true; break;
+    }
+    /* crossed the horizon */
+    if(u > 0.5){ hitHorizon = true; done = true; break; }
+
+    float sCur = cos(phi) * e1.z + sin(phi) * e2.z;
+
+    if(uShowDisk == 1 && sPrev * sCur < 0.0){
+      float t = sPrev / (sPrev - sCur);
+      float uc = mix(uPrev, u, t);
+      float rc = 1.0 / max(uc, 1e-6);
+      if(rc >= uDiskIn && rc <= uDiskOut){
+        float phic = phiPrev + t * h;
+        vec3 pc = rc * (cos(phic) * e1 + sin(phic) * e2);
+        float psi = atan(pc.y, pc.x);
+        col += trans * diskEmission(rc, psi, lam);
+        trans = 0.0;                                /* optically thick */
+        done = true; break;
+      }
+    }
+    sPrev = sCur;
+
+    /* escaped: far away and still receding */
+    if(u < uEsc && w < 0.0){
+      vec3 rh = cos(phi) * e1 + sin(phi) * e2;
+      vec3 ph = -sin(phi) * e1 + cos(phi) * e2;
+      vec3 vd = normalize(-w * rh + u * ph);
+      col += trans * skyColor(vd);
+      done = true; break;
+    }
+  }
+
+  if(!done && !hitHorizon){
+    /* neither captured nor escaped inside the step budget: near-critical ray */
+    col += trans * vec3(0.0);
+  }
+
+  vec3 prev = texelFetch(uPrev, ivec2(gl_FragCoord.xy), 0).rgb;
+  outColor = vec4(mix(prev, col, uBlend), 1.0);
+}`;
+
+const PRESENT_FS = `#version 300 es
+precision highp float;
+in vec2 vUV;
+out vec4 outColor;
+uniform sampler2D uScene;
+uniform vec2 uTexel;
+uniform float uExposure, uGlow, uGlowRadius, uGlowThresh;
+
+vec3 aces(vec3 x){
+  const float a = 2.51, b = 0.03, c = 2.43, d = 0.59, e = 0.14;
+  return clamp((x * (a * x + b)) / (x * (c * x + d) + e), 0.0, 1.0);
+}
+
+void main(){
+  vec3 base = texture(uScene, vUV).rgb;
+  vec3 halo = vec3(0.0);
+  if(uGlow > 0.001){
+    const int TAPS = 32;
+    float tot = 0.0;
+    for(int i = 0; i < TAPS; i++){
+      float fi = float(i) + 0.5;
+      float ang = fi * 2.39996323;
+      float rad = sqrt(fi / float(TAPS));
+      vec2 off = vec2(cos(ang), sin(ang)) * rad * uGlowRadius * uTexel;
+      float wgt = exp(-rad * rad * 1.4);
+      halo += max(texture(uScene, vUV + off).rgb - uGlowThresh, vec3(0.0)) * wgt;
+      tot += wgt;
+    }
+    halo /= tot;
+  }
+  vec3 c = (base + halo * uGlow) * uExposure;
+  c = aces(c);
+  c = pow(c, vec3(1.0 / 2.2));
+  outColor = vec4(c, 1.0);
+}`;
+
+/* ---------------- GL plumbing ---------------- */
+function compile(type, src){
+  const s = gl.createShader(type);
+  gl.shaderSource(s, src); gl.compileShader(s);
+  if(!gl.getShaderParameter(s, gl.COMPILE_STATUS)){
+    console.error(gl.getShaderInfoLog(s), src);
+    throw new Error('shader compile failed');
+  }
+  return s;
+}
+function program(vs, fs){
+  const p = gl.createProgram();
+  gl.attachShader(p, compile(gl.VERTEX_SHADER, vs));
+  gl.attachShader(p, compile(gl.FRAGMENT_SHADER, fs));
+  gl.linkProgram(p);
+  if(!gl.getProgramParameter(p, gl.LINK_STATUS)){
+    console.error(gl.getProgramInfoLog(p));
+    throw new Error('link failed');
+  }
+  const u = {};
+  const n = gl.getProgramParameter(p, gl.ACTIVE_UNIFORMS);
+  for(let i = 0; i < n; i++){
+    const nm = gl.getActiveUniform(p, i).name.replace(/\[0\]$/, '');
+    u[nm] = gl.getUniformLocation(p, nm);
+  }
+  return { p, u };
+}
+
+const traceProg = program(VS, TRACE_FS);
+const presentProg = program(VS, PRESENT_FS);
+const vao = gl.createVertexArray();
+
+let W = 1, H = 1, samples = 0, dirty = true;
+let tex = [null, null], fbo = [null, null], src = 0;
+
+function makeTarget(w, h){
+  const t = gl.createTexture();
+  gl.bindTexture(gl.TEXTURE_2D, t);
+  gl.texImage2D(gl.TEXTURE_2D, 0, INTERNAL, w, h, 0, gl.RGBA, TEXTYPE, null);
+  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
+  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
+  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
+  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
+  const f = gl.createFramebuffer();
+  gl.bindFramebuffer(gl.FRAMEBUFFER, f);
+  gl.framebufferTexture2D(gl.FRAMEBUFFER, gl.COLOR_ATTACHMENT0, gl.TEXTURE_2D, t, 0);
+  gl.bindFramebuffer(gl.FRAMEBUFFER, null);
+  return [t, f];
+}
+
+const MAX_PIXELS = 2.6e6;
+function resize(){
+  const dpr = Math.min(window.devicePixelRatio || 1, 1.5);
+  let w = Math.max(2, Math.round(canvas.clientWidth  * dpr * P.scale));
+  let h = Math.max(2, Math.round(canvas.clientHeight * dpr * P.scale));
+  const over = (w * h) / MAX_PIXELS;
+  if(over > 1){ const k = Math.sqrt(over); w = Math.round(w / k); h = Math.round(h / k); }
+  if(w === W && h === H) return;
+  W = w; H = h;
+  canvas.width = W; canvas.height = H;
+  for(let i = 0; i < 2; i++){
+    if(tex[i]) gl.deleteTexture(tex[i]);
+    if(fbo[i]) gl.deleteFramebuffer(fbo[i]);
+    [tex[i], fbo[i]] = makeTarget(W, H);
+  }
+  document.getElementById('stRes').textContent = W + '×' + H;
+  dirty = true;
+}
+
+/* ---------------- camera ---------------- */
+function camera(){
+  const i = P.incl * Math.PI / 180, a = P.azim * Math.PI / 180;
+  const pos = [
+    P.dist * Math.sin(i) * Math.cos(a),
+    P.dist * Math.sin(i) * Math.sin(a),
+    P.dist * Math.cos(i)
+  ];
+  const fwd = pos.map(v => -v / P.dist);
+  let up = [0, 0, 1];
+  if(Math.abs(fwd[2]) > 0.9995) up = [0, 1, 0];
+  let right = [
+    fwd[1] * up[2] - fwd[2] * up[1],
+    fwd[2] * up[0] - fwd[0] * up[2],
+    fwd[0] * up[1] - fwd[1] * up[0]
+  ];
+  const rl = Math.hypot(right[0], right[1], right[2]);
+  right = right.map(v => v / rl);
+  const u2 = [
+    right[1] * fwd[2] - right[2] * fwd[1],
+    right[2] * fwd[0] - right[0] * fwd[2],
+    right[0] * fwd[1] - right[1] * fwd[0]
+  ];
+  return { pos, fwd, right, up: u2 };
+}
+
+/* Halton low-discrepancy jitter */
+function halton(index, base){
+  let f = 1, r = 0, i = index;
+  while(i > 0){ f /= base; r += f * (i % base); i = Math.floor(i / base); }
+  return r;
+}
+
+/* ---------------- render ---------------- */
+const MAX_SAMPLES = 400;
+let lastT = performance.now(), fpsAcc = 0, fpsN = 0, t0 = performance.now();
+
+function frame(){
+  resize();
+  const now = performance.now();
+  const dt = now - lastT; lastT = now;
+  fpsAcc += dt; fpsN++;
+  if(fpsN >= 20){
+    document.getElementById('stFps').textContent = (1000 / (fpsAcc / fpsN)).toFixed(0);
+    fpsAcc = 0; fpsN = 0;
+  }
+
+  const animating = P.animate === 1 && P.turb > 0.001 && P.showDisk === 1;
+  if(dirty){ samples = 0; dirty = false; }
+
+  const needTrace = animating || samples < MAX_SAMPLES;
+
+  if(needTrace){
+    const cam = camera();
+    const jx = halton(samples + 1, 2) - 0.5;
+    const jy = halton(samples + 1, 3) - 0.5;
+    let blend = 1 / (samples + 1);
+    if(animating) blend = Math.max(blend, 0.14);
+
+    const dst = 1 - src;
+    gl.bindFramebuffer(gl.FRAMEBUFFER, fbo[dst]);
+    gl.viewport(0, 0, W, H);
+    gl.useProgram(traceProg.p);
+    gl.bindVertexArray(vao);
+
+    const u = traceProg.u;
+    gl.uniform2f(u.uRes, W, H);
+    gl.uniform3fv(u.uCamPos, cam.pos);
+    gl.uniform3fv(u.uRight, cam.right);
+    gl.uniform3fv(u.uUp, cam.up);
+    gl.uniform3fv(u.uFwd, cam.fwd);
+    gl.uniform1f(u.uTanHalfFov, Math.tan(P.fov * Math.PI / 360));
+    gl.uniform2f(u.uJitter, jx, jy);
+    gl.uniform1f(u.uBlend, blend);
+    gl.uniform1f(u.uDiskIn, P.diskIn);
+    gl.uniform1f(u.uDiskOut, Math.max(P.diskOut, P.diskIn + 0.5));
+    gl.uniform1f(u.uTpeak, P.tpeak);
+    gl.uniform1f(u.uTurb, P.turb);
+    gl.uniform1f(u.uDiskBright, P.diskBright);
+    gl.uniform1f(u.uGR, P.gr);
+    gl.uniform1f(u.uEscape, Math.max(P.escape, P.dist * 1.6));
+    gl.uniform1f(u.uDphi, P.dphi);
+    gl.uniform1f(u.uTime, ((now - t0) / 1000) * P.speed * 0.5);
+    gl.uniform1f(u.uStarBright, P.starBright);
+    gl.uniform1i(u.uSteps, P.steps | 0);
+    gl.uniform1i(u.uShowDisk, P.showDisk);
+    gl.uniform1i(u.uGrav, P.grav);
+    gl.uniform1i(u.uDopp, P.dopp);
+    gl.uniform1i(u.uStars, P.stars);
+
+    gl.activeTexture(gl.TEXTURE0);
+    gl.bindTexture(gl.TEXTURE_2D, tex[src]);
+    gl.uniform1i(u.uPrev, 0);
+
+    gl.drawArrays(gl.TRIANGLES, 0, 3);
+    src = dst;
+    samples++;
+  }
+
+  gl.bindFramebuffer(gl.FRAMEBUFFER, null);
+  gl.viewport(0, 0, W, H);
+  gl.useProgram(presentProg.p);
+  gl.bindVertexArray(vao);
+  gl.activeTexture(gl.TEXTURE0);
+  gl.bindTexture(gl.TEXTURE_2D, tex[src]);
+  gl.uniform1i(presentProg.u.uScene, 0);
+  gl.uniform2f(presentProg.u.uTexel, 1 / W, 1 / H);
+  gl.uniform1f(presentProg.u.uExposure, P.exposure);
+  gl.uniform1f(presentProg.u.uGlow, P.glow);
+  gl.uniform1f(presentProg.u.uGlowRadius, P.glowRadius);
+  gl.uniform1f(presentProg.u.uGlowThresh, P.glowThresh);
+  gl.drawArrays(gl.TRIANGLES, 0, 3);
+
+  const st = document.getElementById('stSamples');
+  st.textContent = animating ? 'live' : (samples >= MAX_SAMPLES ? samples + ' · converged' : samples);
+  st.className = (!animating && samples >= MAX_SAMPLES) ? 'conv' : '';
+
+  requestAnimationFrame(frame);
+}
+
+/* ============================================================
+   Console
+   ============================================================ */
+const CONTROLS = {
+  camera:[
+    { k:'incl', label:'Inclination', min:0, max:89, step:0.5, fmt:v => v.toFixed(1) + '°',
+      note:'0° looks down the disk axis, 89° is edge-on. Drag on the image to change it.' },
+    { k:'dist', label:'Observer radius', min:8, max:200, step:0.5, fmt:v => v.toFixed(1) + ' M',
+      note:'Schwarzschild radial coordinate of the static observer. Scroll to zoom.' },
+    { k:'fov', label:'Field of view', min:12, max:90, step:1, fmt:v => v.toFixed(0) + '°' }
+  ],
+  disk:[
+    { k:'showDisk', type:'toggle', label:'Render the disk' },
+    { k:'diskIn', label:'Inner radius', min:3, max:20, step:0.25, fmt:v => v.toFixed(2) + ' M',
+      note:() => P.diskIn < 5.99 ? 'Below the ISCO at 6 M no circular orbit is stable, so a real thin disk cannot end here.' : 'At the ISCO, where a thin disk truncates.' },
+    { k:'diskOut', label:'Outer radius', min:6, max:80, step:0.5, fmt:v => v.toFixed(1) + ' M' },
+    { k:'tpeak', label:'Peak temperature', min:2500, max:20000, step:100, fmt:v => v.toFixed(0) + ' K',
+      note:'Display choice. A real disk peaks in the ultraviolet or X-ray, far outside the visible band.' },
+    { k:'turb', label:'Turbulence texture', min:0, max:1, step:0.01, fmt:v => v.toFixed(2),
+      note:'Procedural, sheared by the real Keplerian rotation law.' },
+    { k:'diskBright', label:'Disk brightness', min:0, max:4, step:0.05, fmt:v => v.toFixed(2) }
+  ],
+  rel:[
+    { k:'grav', type:'toggle', label:'Gravitational redshift' },
+    { k:'dopp', type:'toggle', label:'Doppler beaming and shift' },
+    { k:'gr', label:'Lensing strength', min:0, max:1, step:0.01, fmt:v => v.toFixed(2),
+      note:() => P.gr > 0.995 ? 'Full Schwarzschild deflection.' : 'Comparison mode only. The 3Mu² term is scaled down, which is not a solution of general relativity.' },
+    { k:'stars', type:'toggle', label:'Background star field' },
+    { k:'starBright', label:'Star brightness', min:0, max:3, step:0.05, fmt:v => v.toFixed(2) }
+  ],
+  render:[
+    { k:'steps', label:'Integration steps', min:120, max:2400, step:20, fmt:v => v.toFixed(0) },
+    { k:'dphi', label:'Step size dφ', min:0.006, max:0.06, step:0.002, fmt:v => v.toFixed(3) + ' rad',
+      note:() => 'Arc swept per ray: ' + (P.steps * P.dphi / Math.PI).toFixed(1) + 'π rad.' },
+    { k:'escape', label:'Escape radius', min:40, max:600, step:10, fmt:v => v.toFixed(0) + ' M',
+      note:() => { const e = Math.max(P.escape, P.dist * 1.6);
+        return 'Deflection beyond r = ' + e.toFixed(0) + ' M is dropped. Order of the residual: '
+          + (2 / e * 57.3).toFixed(2) + '°.'; } },
+    { k:'scale', label:'Render scale', min:0.4, max:1.2, step:0.05, fmt:v => v.toFixed(2) + '×' },
+    { k:'exposure', label:'Exposure', min:0.05, max:6, step:0.05, fmt:v => v.toFixed(2) },
+    { k:'glow', label:'Bloom', min:0, max:2, step:0.05, fmt:v => v.toFixed(2) },
+    { k:'glowRadius', label:'Bloom radius', min:4, max:80, step:1, fmt:v => v.toFixed(0) + ' px' },
+    { k:'animate', type:'toggle', label:'Animate the disk' },
+    { k:'speed', label:'Animation speed', min:0.1, max:4, step:0.1, fmt:v => v.toFixed(1) + '×' }
+  ]
+};
+
+const refreshers = [];
+
+function buildControls(){
+  for(const [group, list] of Object.entries(CONTROLS)){
+    const host = document.querySelector('[data-controls="' + group + '"]');
+    for(const c of list){
+      if(c.type === 'toggle'){
+        const lab = document.createElement('label');
+        lab.className = 'toggle';
+        lab.innerHTML = '<span class="toggle-label"></span><input type="checkbox"><span class="switch"></span>';
+        lab.querySelector('.toggle-label').textContent = c.label;
+        const inp = lab.querySelector('input');
+        inp.checked = !!P[c.k];
+        inp.addEventListener('change', () => { P[c.k] = inp.checked ? 1 : 0; invalidate(); });
+        host.appendChild(lab);
+        refreshers.push(() => { inp.checked = !!P[c.k]; });
+      } else {
+        const div = document.createElement('div');
+        div.className = 'ctl';
+        div.innerHTML =
+          '<div class="ctl-top"><span class="ctl-label"></span><span class="ctl-val"></span></div>' +
+          '<input type="range">' + (c.note ? '<div class="ctl-note"></div>' : '');
+        div.querySelector('.ctl-label').textContent = c.label;
+        const inp = div.querySelector('input');
+        const val = div.querySelector('.ctl-val');
+        const note = div.querySelector('.ctl-note');
+        inp.min = c.min; inp.max = c.max; inp.step = c.step; inp.value = P[c.k];
+        inp.setAttribute('aria-label', c.label);
+        const sync = () => {
+          val.textContent = c.fmt ? c.fmt(P[c.k]) : P[c.k];
+          if(note){
+            const txt = typeof c.note === 'function' ? c.note() : c.note;
+            note.textContent = txt;
+            note.classList.toggle('alert',
+              (c.k === 'diskIn' && P.diskIn < 5.99) || (c.k === 'gr' && P.gr <= 0.995));
+          }
+        };
+        inp.addEventListener('input', () => { P[c.k] = parseFloat(inp.value); sync(); invalidate(); });
+        sync();
+        host.appendChild(div);
+        refreshers.push(() => { inp.value = P[c.k]; sync(); });
+      }
+    }
+  }
+}
+
+function invalidate(){
+  dirty = true;
+  refreshers.forEach(f => f());
+  updateReadouts();
+  drawScale();
+}
+
+/* ---------------- readouts ---------------- */
+function updateReadouts(){
+  const R = P.dist;
+  document.getElementById('roCam').textContent = R.toFixed(1) + ' M';
+  const bcrit = 3 * Math.sqrt(3);
+  const sinA = bcrit * Math.sqrt(Math.max(1 - 2 / R, 0)) / R;
+  document.getElementById('roShadow').textContent =
+    sinA <= 1 ? (Math.asin(sinA) * 180 / Math.PI).toFixed(2) + '°' : 'observer inside';
+  const rp = (49 / 36) * P.diskIn;
+  document.getElementById('roTpeakR').textContent = rp.toFixed(2) + ' M';
+
+  /* Largest possible blueshift over the disk: photon emitted tangentially on the
+     approaching side, so lambda = r / sqrt(1 - 2M/r), the maximum axial impact
+     parameter available at that radius. g = sqrt(1-3/r) / (1 - Omega*lambda). */
+  let gmax = 1;
+  for(let r = Math.max(P.diskIn, 3.05); r <= P.diskOut; r += 0.05){
+    const Om = 1 / (r * Math.sqrt(r));
+    const lam = r / Math.sqrt(Math.max(1 - 2 / r, 1e-9));
+    const den = 1 - Om * lam;
+    if(den <= 0.02) continue;
+    const g = Math.sqrt(1 - 3 / r) / den;
+    if(isFinite(g)) gmax = Math.max(gmax, g);
+  }
+  document.getElementById('roG').textContent = '×' + gmax.toFixed(2);
+}
+
+/* ---------------- radial map ---------------- */
+function drawScale(){
+  const svg = document.getElementById('scaleSvg');
+  const Wm = 400, Hm = 52, pad = 8;
+  const rmax = Math.max(P.dist, P.diskOut) * 1.08;
+  const x = r => pad + (r / rmax) * (Wm - 2 * pad);
+  const y = 30;
+  const marks = [
+    [2, 'r_s'], [3, 'γ'], [5.196, 'b'], [6, 'ISCO']
+  ];
+  let s = '';
+  s += `<line x1="${pad}" y1="${y}" x2="${Wm - pad}" y2="${y}" stroke="#1D2130" stroke-width="1"/>`;
+  /* horizon block */
+  s += `<rect x="${pad}" y="${y - 5}" width="${x(2) - pad}" height="10" fill="#000" stroke="#2A2F42" stroke-width="1"/>`;
+  /* disk extent */
+  s += `<rect x="${x(P.diskIn)}" y="${y - 4}" width="${Math.max(x(P.diskOut) - x(P.diskIn), 1)}" height="8" fill="#E8A33D" opacity="${P.showDisk ? 0.32 : 0.08}"/>`;
+  for(const [r, lab] of marks){
+    if(r > rmax) continue;
+    s += `<line x1="${x(r)}" y1="${y - 9}" x2="${x(r)}" y2="${y + 9}" stroke="#767E90" stroke-width="1"/>`;
+    s += `<text x="${x(r)}" y="${y + 21}" fill="#4B5162" font-size="8" font-family="IBM Plex Mono, monospace" text-anchor="middle">${lab}</text>`;
+    s += `<text x="${x(r)}" y="${y - 13}" fill="#767E90" font-size="7.5" font-family="IBM Plex Mono, monospace" text-anchor="middle">${r}</text>`;
+  }
+  /* observer */
+  const ox = x(P.dist);
+  s += `<polygon points="${ox},${y - 7} ${ox - 5},${y - 16} ${ox + 5},${y - 16}" fill="#E8A33D"/>`;
+  s += `<text x="${ox}" y="${y + 21}" fill="#E8A33D" font-size="8" font-family="IBM Plex Mono, monospace" text-anchor="middle">obs ${P.dist.toFixed(0)}</text>`;
+  svg.innerHTML = s;
+}
+
+/* ---------------- interaction ---------------- */
+let drag = null;
+canvas.addEventListener('pointerdown', e => {
+  drag = { x:e.clientX, y:e.clientY, incl:P.incl, azim:P.azim };
+  canvas.setPointerCapture(e.pointerId);
+  canvas.classList.add('dragging');
+});
+canvas.addEventListener('pointermove', e => {
+  if(!drag) return;
+  P.azim = drag.azim - (e.clientX - drag.x) * 0.28;
+  P.incl = Math.min(89, Math.max(0, drag.incl + (e.clientY - drag.y) * 0.20));
+  invalidate();
+});
+const endDrag = () => { drag = null; canvas.classList.remove('dragging'); };
+canvas.addEventListener('pointerup', endDrag);
+canvas.addEventListener('pointercancel', endDrag);
+canvas.addEventListener('wheel', e => {
+  e.preventDefault();
+  P.dist = Math.min(200, Math.max(8, P.dist * Math.exp(e.deltaY * 0.0012)));
+  invalidate();
+}, { passive:false });
+
+document.querySelectorAll('[data-preset]').forEach(b => {
+  b.addEventListener('click', () => {
+    const k = b.dataset.preset;
+    if(k === 'edge'){ Object.assign(P, { incl:80, dist:60, fov:30, gr:1, diskIn:6, diskOut:20, exposure:0.90 }); }
+    if(k === 'face'){ Object.assign(P, { incl:10, dist:60, fov:30, gr:1, diskIn:6, diskOut:20, exposure:1.10 }); }
+    if(k === 'ring'){ Object.assign(P, { incl:87, dist:17, fov:62, gr:1, diskIn:6, diskOut:16, exposure:0.42 }); }
+    if(k === 'flat'){ Object.assign(P, { incl:80, dist:60, fov:30, gr:0, diskIn:6, diskOut:20, exposure:0.90 }); }
+    invalidate();
+  });
+});
+
+document.getElementById('btnReset').addEventListener('click', () => {
+  Object.assign(P, DEFAULTS); invalidate();
+});
+document.getElementById('btnPng').addEventListener('click', () => {
+  canvas.toBlob(blob => {
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = 'schwarzschild-i' + P.incl.toFixed(0) + '-r' + P.dist.toFixed(0) + '.png';
+    a.click();
+    setTimeout(() => URL.revokeObjectURL(a.href), 4000);
+  }, 'image/png');
+});
+document.getElementById('toggleConsole').addEventListener('click', () => {
+  document.getElementById('console').classList.toggle('hidden');
+});
+
+window.addEventListener('resize', () => { dirty = true; });
+
+/* ---------------- go ---------------- */
+buildControls();
+invalidate();
+requestAnimationFrame(frame);
+</script>
+</body>
+</html>

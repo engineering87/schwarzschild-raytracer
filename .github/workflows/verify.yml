@@ -1,0 +1,43 @@
+name: Geodesic verification
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  verify:
+    name: Check the integrator against exact closed forms
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Verify the null geodesic integrator
+        run: python tools/verify_geodesics.py
+
+  render:
+    name: Render one frame with the CPU reference implementation
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Install the offline renderer dependencies
+        run: pip install -r tools/requirements.txt
+
+      - name: Render a low resolution frame
+        run: python tools/render_reference.py --scene edge --width 480 --ss 1 --out frame.png
+
+      - name: Upload the frame
+        uses: actions/upload-artifact@v4
+        with:
+          name: reference-frame
+          path: frame.png
