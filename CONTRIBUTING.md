@@ -1,8 +1,8 @@
 # Contributing
 
-Thank you for considering a contribution. This project has one unusual
-constraint that shapes everything else: it claims to solve physics rather than
-to imitate it, and that claim has to stay true.
+Thank you for considering a contribution. One unusual constraint shapes
+everything else here. The project claims to solve physics rather than imitate
+it, and that claim has to keep being true after your change lands.
 
 ## The one hard rule
 
@@ -22,9 +22,9 @@ are the correct ones.
 ## Keeping the two implementations in agreement
 
 The GPU shader in `index.html` and the NumPy renderer in
-`tools/render_reference.py` implement the same algorithm twice, on purpose. A
-change to one must be mirrored in the other. If they disagree, the images in
-the README stop being a check on the shader and become decoration.
+`tools/render_reference.py` implement the same algorithm twice, deliberately, so
+a change to one has to be mirrored in the other. Once they disagree, the images
+in the README stop working as a check on the shader and become decoration.
 
 A quick way to compare after a change:
 
@@ -36,7 +36,7 @@ then open `index.html`, load the `Edge-on` preset, and compare.
 
 ## Scope
 
-Contributions that fit this project well:
+Work that fits this project well:
 
 - The Kerr metric, as an option alongside Schwarzschild rather than a
   replacement. This is the single largest gap in the model.
@@ -48,7 +48,7 @@ Contributions that fit this project well:
 - Corrections to the physics or to the documentation. These are especially
   welcome and will be merged quickly.
 
-Contributions that do not fit:
+Work that does not:
 
 - Effects that improve the look at the cost of correctness, unless they are
   behind a clearly labelled switch and documented as non-physical in
@@ -66,7 +66,6 @@ Contributions that do not fit:
 
 ## Reporting a physics bug
 
-Physics bugs are the most valuable issues this repository can receive. When you
-open one, include the parameter values from the console, a screenshot if the
-problem is visual, and, when you can, the analytic result you expected and its
-source.
+Physics bugs are the most valuable issues this repository can receive. Include
+the parameter values from the console, a screenshot if the problem is visual,
+and wherever possible the analytic result you expected along with its source.

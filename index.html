@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<title>Schwarzschild Ray Tracer — null geodesic integrator</title>
+<title>Schwarzschild Ray Tracer</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans+Condensed:wght@600&family=IBM+Plex+Sans:wght@400;500&family=IBM+Plex+Serif:ital,wght@0,400;0,500;1,400;1,500&display=swap" rel="stylesheet">
@@ -158,7 +158,7 @@ details .content strong{color:var(--ink); font-weight:500}
 details .content code{font-family:var(--mono); font-size:10px; color:var(--amber)}
 details .content ul{list-style:none; margin-bottom:9px}
 details .content li{padding-left:12px; position:relative; margin-bottom:5px}
-details .content li::before{content:"—"; position:absolute; left:0; color:var(--dimmer)}
+details .content li::before{content:"\002B"; position:absolute; left:0; color:var(--dimmer)}
 
 /* ---------- inline mathematical typesetting ---------- */
 .eq{
@@ -222,14 +222,14 @@ details .content .eq + p{margin-top:11px}
 <div id="topbar">
   <div id="brand">SCHWARZSCHILD <span>/</span> null-geodesic ray tracer</div>
   <div id="status">
-    <span>RES <b id="stRes">—</b></span>
-    <span>SAMPLES <b id="stSamples" class="conv">—</b></span>
-    <span>FPS <b id="stFps">—</b></span>
+    <span>RES <b id="stRes">&#183;</b></span>
+    <span>SAMPLES <b id="stSamples" class="conv">&#183;</b></span>
+    <span>FPS <b id="stFps">&#183;</b></span>
   </div>
 </div>
 
 <div id="scale">
-  <div class="eyebrow">Radial map — units of GM/c²</div>
+  <div class="eyebrow">Radial map, units of GM/c²</div>
   <svg id="scaleSvg" viewBox="0 0 400 52" preserveAspectRatio="none"></svg>
 </div>
 
@@ -264,10 +264,10 @@ details .content .eq + p{margin-top:11px}
         <tr class="hl"><td>Photon sphere</td><td>3.000 M</td></tr>
         <tr class="hl"><td>ISCO</td><td>6.000 M</td></tr>
         <tr class="hl"><td>Shadow b<sub>crit</sub> = 3√3 M</td><td>5.196 M</td></tr>
-        <tr><td>Camera radius</td><td id="roCam">—</td></tr>
-        <tr><td>Shadow angular radius</td><td id="roShadow">—</td></tr>
-        <tr><td>Disk peak temperature at</td><td id="roTpeakR">—</td></tr>
-        <tr><td>Max blueshift on disk</td><td id="roG">—</td></tr>
+        <tr><td>Camera radius</td><td id="roCam">&#183;</td></tr>
+        <tr><td>Shadow angular radius</td><td id="roShadow">&#183;</td></tr>
+        <tr><td>Disk peak temperature at</td><td id="roTpeakR">&#183;</td></tr>
+        <tr><td>Max blueshift on disk</td><td id="roG">&#183;</td></tr>
       </table>
       <div class="btnrow" style="margin-top:12px">
         <button id="btnReset">Reset view</button>
@@ -347,14 +347,14 @@ details .content .eq + p{margin-top:11px}
       <summary>References</summary>
       <div class="content">
         <ul>
-          <li>K. Schwarzschild, Sitzungsberichte der Preussischen Akademie der Wissenschaften, 1916 — the vacuum solution.</li>
-          <li>C. Misner, K. Thorne, J. Wheeler, <em>Gravitation</em>, 1973 — orbit equation, photon sphere, local orthonormal frames.</li>
-          <li>J. Bardeen, in <em>Black Holes</em> (Les Houches 1972), 1973 — photon capture cross-section and the 3√3 M shadow.</li>
-          <li>N. Shakura, R. Sunyaev, Astronomy &amp; Astrophysics 24, 337, 1973 — thin accretion disk temperature profile.</li>
-          <li>J.-P. Luminet, Astronomy &amp; Astrophysics 75, 228, 1979 — first computed image of a thin disk around a Schwarzschild hole, including the secondary image.</li>
-          <li>Event Horizon Telescope Collaboration, ApJL 875, 2019 — measured shadow, for comparison with the geometry here.</li>
+          <li>K. Schwarzschild, Sitzungsberichte der Preussischen Akademie der Wissenschaften, 1916. The vacuum solution.</li>
+          <li>C. Misner, K. Thorne, J. Wheeler, <em>Gravitation</em>, 1973. Orbit equation, photon sphere, local orthonormal frames.</li>
+          <li>J. Bardeen, in <em>Black Holes</em> (Les Houches 1972), 1973. Photon capture cross-section and the 3√3 M shadow.</li>
+          <li>N. Shakura, R. Sunyaev, Astronomy &amp; Astrophysics 24, 337, 1973. Thin accretion disk temperature profile.</li>
+          <li>J.-P. Luminet, Astronomy &amp; Astrophysics 75, 228, 1979. The first computed image of a thin disk around a Schwarzschild hole, including the secondary image.</li>
+          <li>Event Horizon Telescope Collaboration, ApJL 875, 2019. The measured shadow, for comparison with the geometry here.</li>
           <li>ACES filmic tone curve, approximation published by K. Narkowicz, 2015.</li>
-          <li>Planckian locus fitted with the cubic approximation commonly attributed to Kim et al. (2002). I have not verified that bibliographic reference directly; treat the citation as unconfirmed. The fit itself is checked against blackbody chromaticities over 1700–25000 K.</li>
+          <li>Planckian locus fitted with the cubic approximation commonly attributed to Kim et al. (2002). That bibliographic reference has not been verified directly, so treat the citation as unconfirmed. The fit itself is checked against blackbody chromaticities over 1700 K to 25000 K.</li>
         </ul>
       </div>
     </details>
@@ -978,7 +978,7 @@ function updateReadouts(){
   const bcrit = 3 * Math.sqrt(3);
   const sinA = bcrit * Math.sqrt(Math.max(1 - 2 / R, 0)) / R;
   document.getElementById('roShadow').textContent =
-    sinA <= 1 ? (Math.asin(sinA) * 180 / Math.PI).toFixed(2) + '°' : 'observer inside';
+    sinA <= 1 ? (Math.asin(sinA) * 180 / Math.PI).toFixed(2) + '\u00B0' : 'observer inside';
   const rp = (49 / 36) * P.diskIn;
   document.getElementById('roTpeakR').textContent = rp.toFixed(2) + ' M';
 

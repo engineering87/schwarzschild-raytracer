@@ -21,21 +21,21 @@ spherical symmetry is assumed.
 
 ## 2. Reducing the ray to one equation
 
-Spherical symmetry has a consequence that the whole renderer depends on. A null
+The whole renderer depends on one consequence of spherical symmetry. A null
 geodesic starting at position $\mathbf{o}$ with spatial direction $\mathbf{d}$
-stays forever in the plane spanned by $\mathbf{o}$ and $\mathbf{d}$. There is no way for it to leave that plane,
-because there is no preferred direction to leave towards. The trajectory is
-therefore a two dimensional problem, whatever the three dimensional geometry of
-the scene looks like.
+stays forever in the plane spanned by those two vectors, since there is no
+preferred direction available for it to drift towards. However complicated the
+three dimensional geometry of the scene, each individual trajectory is a two
+dimensional problem.
 
 Inside that plane, with $u = 1/r$, the null geodesic satisfies
 
 $$\frac{d^{2}u}{d\varphi^{2}} + u = 3Mu^{2}$$
 
-The left hand side alone gives $u = \cos(\varphi - \varphi_{0})/b$, which is a straight line in
-polar coordinates. The single term on the right is general relativity. It is
-not a perturbation bolted onto flat optics: the equation is exact, and the
-renderer integrates it as written with fixed step RK4.
+The left hand side on its own gives $u = \cos(\varphi - \varphi_{0})/b$, a
+straight line written in polar coordinates. Everything relativistic sits in the
+single term on the right, and since the equation is exact the renderer simply
+integrates it as written with fixed step RK4.
 
 The conserved quantities come out of the same setup. For a photon with energy
 $E = -p_{t}$ and total angular momentum $L$, the impact parameter is $b = L/E$,
@@ -55,9 +55,9 @@ $$b = \frac{r_{0}\, d_{t}}{\sqrt{f_{0}}}
 \qquad\qquad
 \frac{du}{d\varphi} = -\frac{\sqrt{f_{0}}\; d_{r}}{r_{0}\, d_{t}}$$
 
-The $\sqrt{f_{0}}$ factors are what make the field of view correct. Dropping them gives
-a picture that is qualitatively similar and quantitatively wrong, and the error
-grows as the camera approaches the hole.
+Those $\sqrt{f_{0}}$ factors are what make the field of view correct. A version
+that omits them still looks broadly right while being quantitatively wrong, and
+the discrepancy grows as the camera approaches the hole.
 
 The axial impact parameter follows from the plane normal
 $\hat{n} = \widehat{\mathbf{o} \times \mathbf{d}}$. For the physical photon, which
@@ -65,8 +65,8 @@ travels towards the camera rather than away from it,
 
 $$\lambda = \frac{L_{z}}{E} = -b \, \hat{n}_{z}$$
 
-This is the quantity the disk needs, and it costs nothing extra: it is fixed by
-the same initial conditions as the trajectory.
+The disk needs this quantity and it costs nothing extra, being fixed by the
+same initial conditions as the trajectory itself.
 
 ## 4. Termination
 
@@ -172,40 +172,39 @@ that term alone and not to the geometry of the disk or to the framing.
 
 ## 8. Known limitations
 
-These are the honest boundaries of the model. Each one is a deliberate choice
-rather than an oversight.
+Every item below is a deliberate boundary of the model, chosen for a reason,
+and knowing where those boundaries lie matters more than the feature list.
 
-**Spin is zero.** Schwarzschild has no frame dragging, no ergosphere, and no
-prograde or retrograde asymmetry in the ISCO. Real holes almost certainly spin,
-and the observational consequences are large: for a maximally rotating Kerr
-hole the ISCO moves from $6M$ to $M$ for prograde orbits, which changes both
-the peak temperature and the shape of the shadow.
+Spin is the big one. Schwarzschild gives no frame dragging, no ergosphere, and
+no asymmetry between prograde and retrograde orbits at the ISCO. Real holes
+almost certainly rotate, and the observational consequences are substantial:
+for a maximally rotating Kerr hole the ISCO moves from $6M$ down to $M$ for
+prograde orbits, which shifts the peak temperature and reshapes the shadow at
+the same time.
 
-**Colour is a mapping, not a measurement.** A disk around a stellar mass hole
-peaks in soft X-rays near $10^{7}$ K. Around a supermassive hole it peaks in the
-ultraviolet. Neither is visible. The peak temperature control maps the physical
-profile onto the visible band so that its shape and the relative shifts can be
-seen at all.
+Colour is a mapping onto the visible band and should not be read as a
+measurement. A disk around a stellar mass hole peaks in soft X-rays near
+$10^{7}$ K, and around a supermassive hole it peaks in the ultraviolet, so in
+either case nothing would reach the eye. The peak temperature control exists so
+that the shape of the profile and the relative shifts can be seen at all.
 
-**No plasma physics.** There is no magnetohydrodynamics, no corona, no
-Comptonisation, no synchrotron emission, no jet, and no absorption along the
-line of sight. The disk is an opaque blackbody surface.
+Nothing in the model touches plasma physics. There is no magnetohydrodynamics,
+no corona, no Comptonisation, no synchrotron emission, no jet, and no
+absorption along the line of sight, because the disk is treated as an opaque
+blackbody surface and left at that. The turbulent banding drawn across it comes
+from procedural noise sheared by the real Keplerian rotation law, which makes
+the shear physical and the pattern decorative. Much the same applies to the
+star field: the lensing that acts on it, Einstein rings included, is a genuine
+output of the integration, while the stars themselves are procedural rather
+than catalogued.
 
-**The turbulence texture is decorative.** The banding is procedural noise
-sheared by the real Keplerian rotation law, so the shear is physical and the
-pattern is not.
-
-**The star field is invented.** Its lensing, including the Einstein rings, is a
-genuine output of the integration. The stars themselves are procedural, not a
-catalogue.
-
-**Finite escape radius.** Deflection accumulated beyond $r_{\mathrm{escape}}$ is
-dropped. The residual is of order $M/r_{\mathrm{escape}}$, which is about half a
-degree at the default setting of $140\,M$, and it decreases as the setting is raised.
-
-**The lensing slider is not physics below 1.0.** It scales the $3Mu^{2}$ term for
-comparison purposes only. The value 1.0 is Schwarzschild; the value 0.0 is
-straight-line optics; anything in between solves nothing.
+Two numerical boundaries round out the list. Deflection accumulated beyond
+$r_{\mathrm{escape}}$ is discarded, leaving a residual of order
+$M/r_{\mathrm{escape}}$, about half a degree at the default setting of
+$140\,M$ and smaller as the setting is raised. And the lensing slider leaves
+physics behind the moment it moves off 1.0, since it merely scales the
+$3Mu^{2}$ term for comparison. At 1.0 the result is Schwarzschild, at 0.0 it is
+straight-line optics, and in between it solves nothing at all.
 
 ## 9. References
 

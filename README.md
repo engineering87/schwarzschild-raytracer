@@ -6,12 +6,12 @@
 
 [![License: MIT](https://img.shields.io/badge/license-MIT-E8A33D.svg)](LICENSE)
 [![Geodesic verification](https://github.com/engineering87/schwarzschild-raytracer/actions/workflows/verify.yml/badge.svg)](https://github.com/engineering87/schwarzschild-raytracer/actions/workflows/verify.yml)
-[![Pages](https://github.com/engineering87/schwarzschild-raytracer/actions/workflows/pages.yml/badge.svg)](https://github.com/engineering87/schwarzschild-raytracer/actions/workflows/pages.yml)
+[![Azure Static Web Apps](https://github.com/engineering87/schwarzschild-raytracer/actions/workflows/azure-static-web-apps.yml/badge.svg)](https://github.com/engineering87/schwarzschild-raytracer/actions/workflows/azure-static-web-apps.yml)
 ![WebGL 2](https://img.shields.io/badge/WebGL-2.0-blue)
 ![Dependencies](https://img.shields.io/badge/runtime%20dependencies-0-brightgreen)
-[![Authored by Claude Opus 5](https://img.shields.io/badge/authored%20by-Claude%20Opus%205-7C5CD6)](docs/PROVENANCE.md)
 
-### [Open the live simulation](https://engineering87.github.io/schwarzschild-raytracer/)
+<!-- Replace the URL below with the hostname Azure assigns, or with a custom domain. -->
+### [Open the live simulation](https://schwarzschild-raytracer.azurestaticapps.net)
 
 <img src="docs/media/edge.png" width="100%" alt="A black hole seen 10 degrees above its accretion disk. The disk appears to bend over and under the shadow, a thin photon ring hugs the shadow edge, and the approaching side is visibly brighter and bluer than the receding side.">
 
@@ -23,44 +23,59 @@
 
 ## What this is
 
-Most black hole visualisations are artwork. A torus is textured, a lens
-distortion is applied, and the result is tuned until it looks convincing. This
-one is not. Every pixel here is the endpoint of a photon trajectory integrated
-backwards through the Schwarzschild metric with fourth order Runge-Kutta, and
-every feature in the image is a consequence of that integration rather than a
-decision made by the author.
+Black hole imagery is usually assembled the way any other visual effect is
+assembled. A torus gets textured, the background gets bent by a lens
+distortion, and the whole thing is adjusted until it convinces. That approach
+works and it produces beautiful pictures, but the picture is a decision.
 
-Because the Schwarzschild solution is spherically symmetric, a light ray can
-never leave the plane containing the observer and its own direction. That
-reduces the trajectory to a single equation in the inverse radius $u = 1/r$:
+Here every pixel is the endpoint of a photon trajectory integrated backwards
+through the Schwarzschild metric with fourth order Runge-Kutta. Whatever shows
+up in the frame is what the integration produced. Nobody chose where the shadow
+would end, how thick the photon ring would be, or which half of the disk would
+be brighter.
+
+The whole approach rests on a piece of luck about spherical symmetry. A light
+ray in a Schwarzschild field can never leave the plane containing the observer
+and its own direction, because there is no preferred direction for it to leave
+towards. That collapses a three dimensional trajectory into a single equation
+in the inverse radius $u = 1/r$:
 
 $$\frac{d^{2}u}{d\varphi^{2}} + u = 3\left(\frac{GM}{c^{2}}\right)u^{2}$$
 
-Remove the term on the right and the solution is a straight line in polar
-coordinates. That term, and only that term, is general relativity. It is not
-a correction applied on top of flat optics. The renderer integrates the
-equation as written, so the weak field result $\alpha = 4GM/(c^{2}b)$ emerges on
-its own at large impact parameter instead of being assumed.
+Drop the term on the right and what remains is a straight line written in polar
+coordinates. That one term carries all of general relativity, and the renderer
+integrates the equation exactly as written, which is why the familiar weak field
+result $\alpha = 4GM/(c^{2}b)$ emerges on its own at large impact parameter
+instead of being put in by hand.
 
 ## What you are looking at
 
-Nothing in the picture above was drawn. Each of these is an output.
+The black disc in the middle is the shadow. Rays that reach $r < 2M$ cross the
+horizon and never come back, so the pixels they came from stay dark. Its edge
+falls at impact parameter $3\sqrt{3}\,M \approx 5.196\,M$, roughly two and a half
+times the horizon radius, which is why the shadow looks considerably larger than
+the hole itself.
 
-| Feature | Where it comes from |
-| --- | --- |
-| **The shadow** | Rays that reach $r < 2M$ are captured. Its edge is the set of rays with impact parameter $3\sqrt{3}\,M \approx 5.196\,M$, which is 2.6 times the horizon radius. |
-| **The disk arcing over the hole** | The far side of the disk, seen over the top because the trajectories bend by more than the disk inclination. |
-| **The disk arcing under the hole** | The underside of the far half, seen through the space below the hole. Both images exist at once, which Luminet first computed in 1979. |
-| **The thin bright rim on the shadow** | The photon ring, formed by rays that wound around the photon sphere at $r = 3M$ before escaping. |
-| **The left side brighter and whiter** | Relativistic beaming. The disk material at the ISCO orbits at exactly $c/2$ as measured locally, so the approaching side is boosted. |
-| **The right side dimmer and more orange** | The same effect with the sign reversed, combined with gravitational redshift. |
-| **Faint circles in the star field** | Einstein rings. Background stars imaged more than once by the same gravitational lens. |
+The band arcing over the top of the shadow is the far side of the disk, visible
+over the hole because the trajectories bend further than the inclination of the
+disk. The band underneath is that same far side seen from below, through the
+space under the hole. Both images exist at once, which Luminet worked out in
+1979 with rather less computing power than a browser tab. Hugging the shadow
+edge is a much thinner and brighter feature, the photon ring, made of rays that
+wound around the photon sphere at $r = 3M$ before escaping towards the camera.
 
-The beaming is not a stylistic exaggeration, and it is measurable.
-`tools/measure_beaming.py` sums the linear luminance of the two halves of the
-hero frame and reports the ratio. Switching the Doppler factor off is the
-control: the frame becomes symmetric to two decimal places, which shows the
-asymmetry comes from that single term rather than from the geometry.
+The left half of the disk is brighter and whiter because the material there is
+coming towards you. At the innermost stable circular orbit the orbital speed is
+exactly $c/2$ as measured by a local static observer, fast enough for
+relativistic beaming to dominate the appearance. On the receding side the same
+effect runs backwards and combines with gravitational redshift, pushing that
+half towards orange. The faint circles scattered through the background are
+Einstein rings, where the same stars are being imaged more than once by the same
+gravitational lens.
+
+That beaming is measurable, not just visible. `tools/measure_beaming.py` sums
+the linear luminance of the two halves of the hero frame and reports the ratio,
+and switching the Doppler factor off provides the control:
 
 ```
 $ python3 tools/measure_beaming.py
@@ -74,16 +89,22 @@ receding half          4449.8
 ratio                     1.00
 ```
 
+With that term removed the frame goes symmetric to two decimal places, which
+places the asymmetry squarely on the Doppler factor and not on the framing or
+the geometry.
+
 ## Verified, not asserted
 
-A renderer that claims to solve physics should prove it. `tools/verify_geodesics.py`
-checks the integrator against two quantities with exact closed forms, using the
-same arithmetic the shader runs, and it runs on every push.
+A renderer that claims to solve physics ought to prove it.
+`tools/verify_geodesics.py` checks the integrator against two quantities with
+exact closed forms, using the same arithmetic the shader runs, and it executes
+on every push.
 
-**The photon capture cross-section.** Bisecting on the impact parameter finds
-the boundary between capture and escape. It has to be $3\sqrt{3}\,M$, because that is
-the impact parameter of the unstable circular photon orbit. This one number
-sets the angular size of the shadow in every frame.
+The first is the photon capture cross-section. Bisecting on the impact parameter
+locates the boundary between capture and escape, and that boundary has to land
+on $3\sqrt{3}\,M$, since it is the impact parameter of the unstable circular
+photon orbit. The number appears nowhere in the source, so it has to come out of
+the integration:
 
 ```
 measured   b_crit = 5.196152423 M
@@ -91,8 +112,7 @@ analytic 3*sqrt(3) = 5.196152423 M
 absolute error     = 1.78e-13
 ```
 
-**Light deflection.** The measured bending is compared against the
-post-Newtonian expansion
+The second is light deflection, compared against the post-Newtonian expansion
 
 $$\alpha = \frac{4M}{b} + \frac{15\pi}{4}\left(\frac{M}{b}\right)^{2} + \frac{128}{3}\left(\frac{M}{b}\right)^{3} + \cdots$$
 
@@ -103,15 +123,15 @@ $$\alpha = \frac{4M}{b} + \frac{15\pi}{4}\left(\frac{M}{b}\right)^{2} + \frac{12
 | 100 | 0.041222540 | 0.040000000 | 0.041178097 | 4.44e-05 | 4.27e-05 |
 | 400 | 0.010074304 | 0.010000000 | 0.010073631 | 6.73e-07 | 6.67e-07 |
 
-What is left over after the second order term tracks the third order term to
-about one percent. That is exactly what a correct integration truncated at a
-known order should do. Reducing the step from 0.004 to 0.0005 moves the answer
-by 8e-10 radians, so what remains is series truncation rather than numerics.
+What is left over after the second order term follows the third order term to
+about one percent, which is how a correct integration truncated at a known order
+should behave. Cutting the step from 0.004 to 0.0005 shifts the answer by 8e-10
+radians, so what remains is series truncation and not numerical error.
 
 ## Gallery
 
-Every image below is produced by the same code path, and every pair differs by
-a single switch.
+Every image below comes out of the same code path, and each pair differs by a
+single switch.
 
 <table>
 <tr>
@@ -119,42 +139,41 @@ a single switch.
 <td width="50%"><img src="docs/media/ring.png" alt="Close view of the photon ring"></td>
 </tr>
 <tr>
-<td><b>Face-on.</b> Looking down the disk axis. Beaming disappears because no
-material moves along the line of sight, and the photon ring closes into a
+<td><b>Face-on.</b> Looking straight down the disk axis, beaming disappears
+because nothing moves along the line of sight, and the photon ring closes into a
 complete circle.</td>
-<td><b>Close to the plane at r = 17 M.</b> The photon ring separates from the
-shadow edge, and background stars are visible in the gap between them.</td>
+<td><b>Close to the plane at r = 17 M.</b> The photon ring pulls away from the
+shadow edge, and background stars become visible in the gap between them.</td>
 </tr>
 <tr>
 <td><img src="docs/media/nodisk.png" alt="The star field alone, lensed"></td>
 <td><img src="docs/media/flat.png" alt="The same scene with the lensing term disabled"></td>
 </tr>
 <tr>
-<td><b>Lensing alone.</b> The disk is switched off. The concentric arcs are
-Einstein rings: the same background stars imaged repeatedly around the
-shadow.</td>
-<td><b>Lensing switched off.</b> The $3Mu^{2}$ term is set to zero, so
-rays travel in straight lines. This is what the same disk would look like under
-Newtonian optics. It is a comparison mode, not a solution.</td>
+<td><b>Lensing on its own.</b> With the disk switched off the concentric arcs
+stand out clearly. They are the same background stars imaged repeatedly around
+the shadow.</td>
+<td><b>Lensing switched off.</b> Setting the $3Mu^{2}$ term to zero sends every
+ray along a straight line, which is how the same disk would look under Newtonian
+optics. It is a comparison mode and solves nothing.</td>
 </tr>
 <tr>
 <td><img src="docs/media/nodoppler.png" alt="Doppler term disabled"></td>
 <td><img src="docs/media/noredshift.png" alt="Gravitational redshift disabled"></td>
 </tr>
 <tr>
-<td><b>Doppler term disabled.</b> The frame becomes left-right symmetric. The
-asymmetry in the hero image is entirely this one factor.</td>
+<td><b>Doppler term disabled.</b> The frame goes left-right symmetric, which
+attributes the entire asymmetry of the hero image to this one factor.</td>
 <td><b>Gravitational redshift disabled.</b> The inner disk brightens and shifts
-blue, because the climb out of the potential well is no longer being paid
-for.</td>
+blue once the climb out of the potential well stops being paid for.</td>
 </tr>
 </table>
 
 ## Running it
 
 The simulation is a single self-contained HTML file with no build step, no
-bundler, and no runtime dependency. Clone the repository and open `index.html`,
-or serve the directory:
+bundler, and nothing to install. Clone the repository and open `index.html`, or
+serve the directory if your browser is fussy about local files:
 
 ```bash
 git clone https://github.com/engineering87/schwarzschild-raytracer.git
@@ -162,25 +181,63 @@ cd schwarzschild-raytracer
 python3 -m http.server 8000
 ```
 
-Then open <http://localhost:8000>. A WebGL 2 context is required.
+Then visit <http://localhost:8000>. A WebGL 2 context is required.
 
-**Controls.** Drag to orbit, scroll to change the observer radius, and use the
-console on the right for everything else. The frame accumulates jittered
-samples while the camera is still and reports `converged` when it settles, so
-leaving it alone for a few seconds produces a clean image suitable for
-capture. The `Save PNG` button writes the current frame.
+Drag to orbit, scroll to change the observer radius, and use the console on the
+right for everything else. While the camera sits still the frame accumulates
+jittered samples and reports `converged` once it settles, so leaving it alone for
+a few seconds gives you a clean image worth capturing. The `Save PNG` button
+writes out whatever is currently on screen.
 
-**Performance.** The cost is roughly $\text{pixels} \times \text{steps}$, and a ray that escapes
-or hits the disk stops early. On a discrete GPU the defaults run interactively
-at 1080p. On integrated graphics, lower `Render scale` to 0.6 and
-`Integration steps` to 400 first. Neither change alters the physics, only how
-finely and how far each ray is followed.
+Cost scales roughly as pixels times steps, and rays that escape or hit the disk
+stop early, so the defaults run interactively at 1080p on a discrete GPU. On
+integrated graphics, drop `Render scale` to 0.6 and `Integration steps` to 400
+before touching anything else. Neither one changes the physics, only how finely
+and how far each ray is followed.
+
+## Deployment
+
+Pushing to `main` publishes the simulation to Azure Static Web Apps through
+`.github/workflows/azure-static-web-apps.yml`. Only `index.html` and
+`staticwebapp.config.json` are staged and uploaded, which keeps the deployed
+payload under 100 kB while the images, the offline renderer, and the
+documentation stay in the repository without being served.
+
+Setting this up on a fresh Azure resource takes three steps. Create the Static
+Web App, choosing the deployment source "Other" so that Azure does not generate
+a second workflow of its own:
+
+```bash
+az staticwebapp create \
+  --name schwarzschild-raytracer \
+  --resource-group <your-resource-group> \
+  --location westeurope \
+  --sku Free
+```
+
+Read the deployment token:
+
+```bash
+az staticwebapp secrets list \
+  --name schwarzschild-raytracer \
+  --query "properties.apiKey" -o tsv
+```
+
+Then store it in the repository under Settings, Secrets and variables, Actions,
+as `AZURE_STATIC_WEB_APPS_API_TOKEN`, and push. Preview environments for pull
+requests are deliberately left unconfigured, since a single page gains little
+from them and the reference renderer under `tools/` already provides a way to
+inspect a change before it lands.
+
+`staticwebapp.config.json` sets caching, a content security policy that allows
+only the inline script and the web font, and a fallback that routes everything
+to the simulation.
 
 ## Reproducing the images
 
 Every picture in this README is generated from source by a NumPy
-reimplementation of the same algorithm, so the repository contains no image
-that cannot be regenerated on a machine with no GPU and no browser.
+reimplementation of the same algorithm, so nothing here is an artefact that
+cannot be regenerated on a machine with no GPU and no browser:
 
 ```bash
 pip install -r tools/requirements.txt
@@ -188,53 +245,85 @@ python3 tools/render_reference.py --list
 python3 tools/render_reference.py --scene edge --width 1280 --ss 2
 ```
 
-The reference renderer exists for a second reason. If a change to the shader
-makes the GPU output diverge from the CPU output, one of the two is wrong, and
-having both makes that visible instead of plausible.
+The reference renderer earns its place for a second reason. If a change to the
+shader makes the GPU output drift away from the CPU output, one of the two is
+wrong, and having both makes the disagreement visible instead of leaving it
+plausible.
 
 ## What is not modelled
 
-This matters more than the feature list. The full discussion is in
-[docs/PHYSICS.md](docs/PHYSICS.md).
+The largest limitation by far is that the hole does not spin. This is
+Schwarzschild rather than Kerr, so there is no frame dragging and no ergosphere.
+Real holes almost certainly rotate, and the difference is not cosmetic: for a
+maximally spinning hole the innermost stable circular orbit moves from $6M$ down
+to $M$ for prograde orbits, which changes the temperature profile and the shape
+of the shadow together.
 
-- **Spin is zero.** This is Schwarzschild, not Kerr. There is no frame
-  dragging and no ergosphere. Real holes almost certainly rotate, and for a
-  maximally spinning one the ISCO moves from $6M$ to $M$, which changes both
-  the temperature profile and the shape of the shadow.
-- **Colour is a mapping, not a measurement.** A real disk peaks in the
-  ultraviolet or in soft X-rays, so none of it is visible. The peak temperature
-  control projects the physical profile onto the visible band. The shape of the
-  profile is physical, the absolute temperature is a display choice.
-- **There is no plasma physics.** No magnetohydrodynamics, no corona, no
-  Comptonisation, no synchrotron emission, no jet, and no absorption along the
-  path. The disk is an opaque blackbody surface.
-- **The turbulence texture is decorative.** The banding is procedural noise
-  sheared by the real Keplerian rotation law. The shear is physical and the
-  pattern is not.
-- **The star field is invented.** Its lensing is a genuine output of the
-  integration, but the stars themselves are procedural rather than a catalogue.
-- **Deflection beyond the escape radius is dropped.** The residual is of order
-  $M/r_{\mathrm{escape}}$, roughly half a degree at the default setting, and it shrinks as
-  the setting is raised.
+Colour is a mapping rather than a measurement. A real disk peaks in the
+ultraviolet around a supermassive hole and in soft X-rays around a stellar mass
+one, so none of it would reach your eye at all. The peak temperature control
+projects the physical profile onto the visible band. The shape of that profile
+is physics, the absolute temperature is a display choice, and the interface says
+as much.
+
+There is no plasma physics anywhere in this. No magnetohydrodynamics, no corona,
+no Comptonisation, no synchrotron emission, no jet, and no absorption along the
+line of sight. The disk behaves as an opaque blackbody surface and nothing more.
+The turbulent banding across it is procedural noise sheared by the real Keplerian
+rotation law, so the shear is physical while the pattern is decoration. The star
+field is likewise invented: its lensing is a genuine output of the integration,
+but the stars themselves are procedural rather than a catalogue.
+
+Two numerical caveats are worth knowing. Deflection accumulated beyond the escape
+radius is discarded, leaving a residual of order $M/r_{\mathrm{escape}}$, roughly
+half a degree at the default setting and smaller as you raise it. And the lensing
+slider stops being physics as soon as it leaves 1.0, since it simply scales the
+$3Mu^{2}$ term for the sake of comparison.
+
+The full discussion, with derivations, lives in
+[docs/PHYSICS.md](docs/PHYSICS.md).
 
 ## Repository layout
 
 ```
 index.html                    the simulation, self-contained, no build step
+staticwebapp.config.json      headers, caching, and routing for Azure
 docs/PHYSICS.md               derivations, the frequency shift, verification results
 docs/PROVENANCE.md            how this was authored, and how to compare other models
 docs/media/                   every image in this README, all regenerable
 tools/render_reference.py     NumPy reimplementation used to produce the images
 tools/verify_geodesics.py     numerical checks against exact closed forms
 tools/measure_beaming.py      measures the Doppler asymmetry, with a control
-.github/workflows/verify.yml  runs the checks on every push
-.github/workflows/pages.yml   publishes index.html to GitHub Pages
+.github/workflows/            verification on every push, deployment on main
 ```
+
+## Provenance
+
+All of the code, the images, and the documentation in this repository were
+produced by Anthropic Claude Opus 5 during a single session on 13 August 2026,
+starting from a one sentence brief that named no metric, no integration scheme,
+no disk model, and no verification strategy. The human contribution was the
+brief, the direction, and the review.
+
+This is written down because the repository is meant to serve as the reference
+point of a comparison: the same brief will go to other models, and the results
+will be set side by side. [docs/PROVENANCE.md](docs/PROVENANCE.md) has the exact
+brief, the split between what was verified and what was not, the course
+corrections made along the way including the mistakes, and a checklist of the
+specific places where a plausible looking black hole renderer can be quietly
+wrong. The verification scripts under `tools/` are deliberately independent of
+everything else, so another implementation can be dropped into
+`tools/verify_geodesics.py` and graded on numbers.
+
+Equations are typeset rather than approximated. The Markdown uses the LaTeX
+support built into GitHub, and the simulation typesets its own formulas in HTML
+and CSS, with real fractions, radicals, and raised exponents, which keeps the
+page free of any external typesetting library at runtime.
 
 ## References
 
-The physics is standard and old. The novelty here is only that it runs at
-sixty frames per second in a tab.
+The physics is standard and old. The only novelty is that it runs at sixty
+frames per second in a tab.
 
 - K. Schwarzschild, Sitzungsberichte der Preussischen Akademie der
   Wissenschaften, 189, 1916.
@@ -244,48 +333,23 @@ sixty frames per second in a tab.
 - J.-P. Luminet, Astronomy and Astrophysics 75, 228, 1979.
 - Event Horizon Telescope Collaboration, Astrophysical Journal Letters 875, 2019.
 
-One citation is flagged as unverified. The Planckian locus is evaluated with a
-cubic approximation of the CIE 1931 chromaticity coordinates that is commonly
-attributed to Kim et al. (2002). That bibliographic reference has not been
-checked directly and should be treated as unconfirmed. The fit itself has been
-validated against blackbody chromaticities from 1700 K to 25000 K.
-
-## Provenance
-
-Every line of code, every image, and every document in this repository was
-produced by **Anthropic Claude Opus 5** in a single session on 13 August 2026,
-from a one sentence brief that specified no metric, no integration scheme, no
-disk model, and no verification strategy. The human role was the brief,
-direction, and review.
-
-This is stated plainly because the repository is the reference point of a
-comparison study: the same brief will be given to other models, and the results
-compared. [docs/PROVENANCE.md](docs/PROVENANCE.md) records the exact brief, what
-was verified and what was not, the course corrections made during the session
-including the ones that were mistakes, and a checklist of the specific places
-where a plausible looking black hole renderer can be quietly wrong.
-
-The verification scripts in `tools/` are deliberately independent of the rest of
-the project, so another model's integrator can be dropped into
-`tools/verify_geodesics.py` and graded on numbers rather than on appearance.
-
-Equations in this repository are typeset rather than approximated with plain
-text. The Markdown files use the LaTeX support built into GitHub, and the
-simulation typesets its own equations in HTML and CSS, with real fractions,
-radicals, and raised exponents, so that no external typesetting library is
-loaded at runtime.
+One citation carries a warning. The Planckian locus is evaluated with a cubic
+approximation of the CIE 1931 chromaticity coordinates commonly attributed to
+Kim et al. (2002), and that bibliographic reference has not been checked
+directly, so treat it as unconfirmed. The fit itself has been validated against
+blackbody chromaticities from 1700 K to 25000 K.
 
 ## Contributing
 
-Issues and pull requests are welcome. See [CONTRIBUTING.md](CONTRIBUTING.md).
-One rule matters more than the others: a change that alters the physics has to
-come with the verification output showing that
-`tools/verify_geodesics.py` still passes.
+Issues and pull requests are welcome, and [CONTRIBUTING.md](CONTRIBUTING.md)
+covers the details. One rule outweighs the rest: any change that touches the
+physics has to arrive with the output of `tools/verify_geodesics.py` showing that
+the checks still pass.
 
 ## Citing this work
 
-See [CITATION.cff](CITATION.cff), or use the *Cite this repository* button in
-the GitHub sidebar.
+See [CITATION.cff](CITATION.cff), or use the *Cite this repository* button in the
+GitHub sidebar.
 
 ## License
 

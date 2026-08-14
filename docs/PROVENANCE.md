@@ -2,10 +2,10 @@
 
 This document records how the code in this repository was produced, by whom or
 by what, and which parts of it were checked rather than merely asserted. It
-exists because the repository is also the reference point of a comparison
-study: the same brief will be given to other language models, and a comparison
-is only meaningful when the starting conditions are written down before the
-results are known.
+exists because the repository doubles as the reference point of a comparison
+study. The same brief will go to other language models, and any comparison only
+means something if the starting conditions were written down before anyone knew
+how the results would turn out.
 
 ## Summary
 
@@ -31,11 +31,10 @@ Translated: *I would like to create a black hole simulation that runs in the
 browser. The simulation must be professional, visually compelling, and follow
 the laws of known physics.*
 
-A standing instruction was in effect for the whole session, requiring that
-every claim be verifiable, that sources be cited, and that anything which
-cannot be confirmed be marked explicitly as unconfirmed. The unconfirmed
-attribution of the Planckian locus fit, flagged in three separate places, is a
-direct consequence of that instruction rather than an afterthought.
+A standing instruction ran for the whole session, requiring that every claim be
+verifiable, that sources be cited, and that anything unconfirmable be marked as
+such. The warning attached to the Planckian locus attribution, which appears in
+three separate places, comes directly from that instruction.
 
 A second message, later in the same session, asked for the work to be turned
 into a complete open source repository with a README and a screenshot. No
@@ -58,9 +57,8 @@ Everything in this repository. Specifically:
 
 ## What was actually verified
 
-The distinction between a claim and a checked claim is the point of this
-section. The following were computed during the session and can be reproduced
-by running the scripts.
+Everything below was computed during the session and can be reproduced by
+running the scripts, which is what separates a checked claim from a claim.
 
 **The critical impact parameter.** Bisection on the impact parameter separates
 captured from escaping rays. The measured boundary is $5.196152423\,M$ against
@@ -100,9 +98,8 @@ on the wrong half of the image, and was corrected before any code was written.
 
 ## Course corrections during the session
 
-Recording the failures matters as much as recording the successes, because a
-model comparison that only reports the final artefact hides most of the
-signal.
+A comparison that reports only the finished artefact throws away most of the
+signal, so the failures are recorded here alongside the successes.
 
 1. **A garbled expression in the readout code.** The first version of the
    maximum blueshift calculation in `index.html` contained a leftover fragment
@@ -130,12 +127,12 @@ signal.
 If you are reproducing this with another model, the following make the
 comparison informative rather than aesthetic.
 
-**Ask the same question and give no technical direction.** The interesting
-signal is whether the model reaches for the exact orbit equation on its own, or
-whether it reaches for a screen-space distortion, a weak-field approximation
-applied to a straight ray, or a hand-tuned lens shader.
+Ask the same question and offer no technical direction. What you want to learn
+is whether the model reaches for the exact orbit equation of its own accord, or
+settles for a screen-space distortion, a weak-field approximation applied to a
+straight ray, or a hand-tuned lens shader.
 
-**Check these specific things in the output.** Each one is a place where a
+Then work through the checks below. Each row marks a place where a
 plausible-looking implementation can be quietly wrong.
 
 | Check | What a correct implementation does |
@@ -152,13 +149,14 @@ plausible-looking implementation can be quietly wrong.
 | Photon ring | A distinct thin feature at the shadow edge, not the disk edge |
 | Honesty of the documentation | States which parts are physical and which are display choices |
 
-**Run the verification scripts against the other model's integrator.** The two
-scripts in `tools/` are deliberately independent of the rest of this project.
-Porting another implementation into the `integrate` function of
-`tools/verify_geodesics.py` takes a few minutes and produces a number rather
+Run the verification scripts against the other integrator. The two scripts in
+`tools/` were kept independent of the rest of the project for exactly this
+purpose, and porting another implementation into the `integrate` function of
+`tools/verify_geodesics.py` takes a few minutes while producing a number rather
 than an impression.
 
-**Separate correctness from appearance.** A model can produce a beautiful image
-from wrong physics, and a correct integrator with a badly chosen camera and
-exposure produces something that looks worse than a shader trick. Grade the two
-axes separately, and note how many iterations each one needed.
+Finally, keep correctness and appearance on separate ledgers. A model can
+produce a beautiful image from wrong physics, and a correct integrator saddled
+with a badly chosen camera and exposure will look worse than a shader trick.
+Grade the two axes apart, and note how many iterations each one took to get
+right.
