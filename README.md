@@ -8,10 +8,9 @@
 [![Geodesic verification](https://github.com/engineering87/schwarzschild-raytracer/actions/workflows/verify.yml/badge.svg)](https://github.com/engineering87/schwarzschild-raytracer/actions/workflows/verify.yml)
 [![Azure Static Web Apps](https://github.com/engineering87/schwarzschild-raytracer/actions/workflows/azure-static-web-apps.yml/badge.svg)](https://github.com/engineering87/schwarzschild-raytracer/actions/workflows/azure-static-web-apps.yml)
 ![WebGL 2](https://img.shields.io/badge/WebGL-2.0-blue)
-![Dependencies](https://img.shields.io/badge/runtime%20dependencies-0-brightgreen)
+![No build step](https://img.shields.io/badge/build%20step-none-brightgreen)
 
-<!-- Replace the URL below with the hostname Azure assigns, or with a custom domain. -->
-### [Open the live simulation](https://schwarzschild-raytracer.azurestaticapps.net)
+### [Open the live simulation](https://white-forest-0cb613710.7.azurestaticapps.net/)
 
 <img src="docs/media/edge.png" width="100%" alt="A black hole seen 10 degrees above its accretion disk. The disk appears to bend over and under the shadow, a thin photon ring hugs the shadow edge, and the approaching side is visibly brighter and bluer than the receding side.">
 
@@ -93,7 +92,7 @@ With that term removed the frame goes symmetric to two decimal places, which
 places the asymmetry squarely on the Doppler factor and not on the framing or
 the geometry.
 
-## Verified, not asserted
+## Verification
 
 A renderer that claims to solve physics ought to prove it.
 `tools/verify_geodesics.py` checks the integrator against two quantities with
@@ -171,9 +170,11 @@ blue once the climb out of the potential well stops being paid for.</td>
 
 ## Running it
 
-The simulation is a single self-contained HTML file with no build step, no
-bundler, and nothing to install. Clone the repository and open `index.html`, or
-serve the directory if your browser is fussy about local files:
+The simulation is a single HTML file with no build step, no bundler, and nothing
+to install. It makes one external request, for the IBM Plex web font, and falls
+back to system fonts when that request fails, so it works offline and behind a
+restrictive network. Clone the repository and open `index.html`, or serve the
+directory if your browser is fussy about local files:
 
 ```bash
 git clone https://github.com/engineering87/schwarzschild-raytracer.git
@@ -190,48 +191,11 @@ a few seconds gives you a clean image worth capturing. The `Save PNG` button
 writes out whatever is currently on screen.
 
 Cost scales roughly as pixels times steps, and rays that escape or hit the disk
-stop early, so the defaults run interactively at 1080p on a discrete GPU. On
-integrated graphics, drop `Render scale` to 0.6 and `Integration steps` to 400
-before touching anything else. Neither one changes the physics, only how finely
-and how far each ray is followed.
-
-## Deployment
-
-Pushing to `main` publishes the simulation to Azure Static Web Apps through
-`.github/workflows/azure-static-web-apps.yml`. Only `index.html` and
-`staticwebapp.config.json` are staged and uploaded, which keeps the deployed
-payload under 100 kB while the images, the offline renderer, and the
-documentation stay in the repository without being served.
-
-Setting this up on a fresh Azure resource takes three steps. Create the Static
-Web App, choosing the deployment source "Other" so that Azure does not generate
-a second workflow of its own:
-
-```bash
-az staticwebapp create \
-  --name schwarzschild-raytracer \
-  --resource-group <your-resource-group> \
-  --location westeurope \
-  --sku Free
-```
-
-Read the deployment token:
-
-```bash
-az staticwebapp secrets list \
-  --name schwarzschild-raytracer \
-  --query "properties.apiKey" -o tsv
-```
-
-Then store it in the repository under Settings, Secrets and variables, Actions,
-as `AZURE_STATIC_WEB_APPS_API_TOKEN`, and push. Preview environments for pull
-requests are deliberately left unconfigured, since a single page gains little
-from them and the reference renderer under `tools/` already provides a way to
-inspect a change before it lands.
-
-`staticwebapp.config.json` sets caching, a content security policy that allows
-only the inline script and the web font, and a fallback that routes everything
-to the simulation.
+stop early, which keeps the average well below the worst case. If the frame rate
+disappoints, drop `Render scale` to 0.6 and `Integration steps` to 400 before
+touching anything else. Neither one changes the physics, only how finely and how
+far each ray is followed. The status bar reports the resolution and the frame
+rate actually being achieved, so you can tune against a number.
 
 ## Reproducing the images
 
@@ -290,12 +254,18 @@ index.html                    the simulation, self-contained, no build step
 staticwebapp.config.json      headers, caching, and routing for Azure
 docs/PHYSICS.md               derivations, the frequency shift, verification results
 docs/PROVENANCE.md            how this was authored, and how to compare other models
+docs/DEPLOYMENT.md            setting up the Azure Static Web App from scratch
 docs/media/                   every image in this README, all regenerable
 tools/render_reference.py     NumPy reimplementation used to produce the images
 tools/verify_geodesics.py     numerical checks against exact closed forms
 tools/measure_beaming.py      measures the Doppler asymmetry, with a control
 .github/workflows/            verification on every push, deployment on main
 ```
+
+Pushing to `main` publishes the simulation to Azure Static Web Apps, staging
+only `index.html` and `staticwebapp.config.json` so that the deployed payload
+stays under 100 kB. [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md) covers setting that
+up on a fresh Azure resource.
 
 ## Provenance
 
@@ -322,8 +292,7 @@ page free of any external typesetting library at runtime.
 
 ## References
 
-The physics is standard and old. The only novelty is that it runs at sixty
-frames per second in a tab.
+The physics is standard and old. Only the delivery is new.
 
 - K. Schwarzschild, Sitzungsberichte der Preussischen Akademie der
   Wissenschaften, 189, 1916.

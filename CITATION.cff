@@ -12,7 +12,7 @@ authors:
     family-names: Del Re
     alias: engineering87
 repository-code: 'https://github.com/engineering87/schwarzschild-raytracer'
-url: 'https://engineering87.github.io/schwarzschild-raytracer/'
+url: 'https://white-forest-0cb613710.7.azurestaticapps.net/'
 abstract: >-
   A real-time browser renderer of a Schwarzschild black hole with a thin
   Keplerian accretion disk. Null geodesics are integrated per pixel with
