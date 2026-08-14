@@ -37,6 +37,22 @@ jobs:
           cp staticwebapp.config.json _site/
           ls -la _site
 
+      - name: Fail early when the deployment token is missing
+        # The deploy action reports a missing token as an unknown exception
+        # several steps later, which is hard to read in the log. Check it here
+        # and say what to do about it.
+        env:
+          TOKEN: ${{ secrets.AZURE_STATIC_WEB_APPS_API_TOKEN }}
+        run: |
+          if [ -z "$TOKEN" ]; then
+            echo "::error::AZURE_STATIC_WEB_APPS_API_TOKEN is empty or unset."
+            echo "Create the Static Web App, read its deployment token with"
+            echo "  az staticwebapp secrets list --name <app> --query properties.apiKey -o tsv"
+            echo "and store it under Settings, Secrets and variables, Actions."
+            exit 1
+          fi
+          echo "Token present, length ${#TOKEN}."
+
       - name: Deploy
         id: swa
         uses: Azure/static-web-apps-deploy@v1
@@ -47,4 +63,3 @@ jobs:
           api_location: ''
           output_location: ''
           skip_app_build: true
-          skip_api_build: true
